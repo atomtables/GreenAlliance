@@ -1,38 +1,13 @@
-# sv
+# FRC Green Alliance
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
-
-## Creating a project
-
-If you're seeing this, you've probably already done this step. Congrats!
-
-```bash
-# create a new project in the current directory
-npx sv create
-
-# create a new project in my-app
-npx sv create my-app
-```
-
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```bash
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
-
-```bash
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+## note:
+- generate and migrate database after finishing the TODO
+- rn the TODO is to create permissions that allow the user to access whatever they should be
+- i created roles so in the code we'll make it so roles implicitly grant certain permissions
+- probably also make it so you can explicitly revoke permissions from a lead (who might have TODO creation perms)
+- implicit's all there so the permissions property in schema.ts (database schema) only tells what permissions are explicitly granted
+- for now let's finish up the structure of the user
+- take a look at auth.js cuz i took all the demo stuff and dumped it in there, basically we have to write actions with those functions as the body
+- dont worry about all that for now tho because thats all frontend stuff
+- you work on the backend ill work on the frontend and when we commit hopefully we dont have merge conflicts
+- pray that the git doesnt get reset 😭🙏

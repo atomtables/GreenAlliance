@@ -2,7 +2,9 @@ import { eq } from 'drizzle-orm';
 import { sha256 } from '@oslojs/crypto/sha2';
 import { encodeBase64url, encodeHexLowerCase } from '@oslojs/encoding';
 import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
+import * as table from '$lib/server/db/schema.js';
+import {fail} from "@sveltejs/kit";
+import {verify} from "@node-rs/argon2";
 
 const DAY_IN_MS = 1000 * 60 * 60 * 24;
 
@@ -10,8 +12,7 @@ export const sessionCookieName = 'auth-session';
 
 export function generateSessionToken() {
 	const bytes = crypto.getRandomValues(new Uint8Array(18));
-	const token = encodeBase64url(bytes);
-	return token;
+	return encodeBase64url(bytes);
 }
 
 /**
@@ -88,3 +89,139 @@ export function deleteSessionTokenCookie(event) {
 		path: '/'
 	});
 }
+
+function validateUsername(username) {
+	return (
+		typeof username === 'string' &&
+		username.length >= 3 &&
+		username.length <= 31 &&
+		/^[a-z0-9_-]+$/.test(username)
+	);
+}
+
+function validatePassword(password) {
+	return (
+		typeof password === 'string' &&
+		password.length >= 6 &&
+		password.length <= 255
+	);
+}
+
+class ValidationError extends Error {
+	constructor(message) {
+		super("A validation error occurred");
+		this.name = 'ValidationError';
+		this.error = message;
+	}
+}
+
+export let validateLogin = async (formData) => {
+	const username = formData.get('username');
+	const password = formData.get('password');
+
+	if (!validateUsername(username)) {
+		throw new ValidationError({ error: "username", message: 'Invalid username (min 3, max 31 characters, alphanumeric only)' })
+	}
+	if (!validatePassword(password)) {
+		throw new ValidationError({ error: "password", message: 'Invalid password (min 6, max 255 characters)' })
+	}
+
+	const results = db
+		.select()
+		.from(table.user)
+		.where(eq(table.user.username, username))
+
+	const existingUser = await results.then(takeUniqueOrThrow);
+	if (!existingUser) {
+		throw new ValidationError({ error: "authentication", message: 'Incorrect username or password' })
+	}
+
+	const validPassword = await verify(existingUser.passwordHash, password, {
+		memoryCost: 19456,
+		timeCost: 2,
+		outputLen: 32,
+		parallelism: 1,
+	});
+	if (!validPassword) {
+		throw new ValidationError({ error: "authentication", message: 'Incorrect username or password' })
+	}
+
+	return existingUser;
+}
+
+const login = () => {
+	/*
+	try {
+		const existingUser = await validateLogin(await event.request.formData());
+
+		const sessionToken = auth.generateSessionToken();
+		const session = await auth.createSession(sessionToken, existingUser.id);
+		auth.setSessionTokenCookie(event, sessionToken, session.expiresAt);
+
+		return redirect(302, '/demo/lucia');
+	} catch (e) {
+		return fail(400, e);
+	}
+	 */
+	throw new Error("incorrect context");
+}
+
+const takeUniqueOrThrow = values => {
+	if (values.length !== 1) throw new Error("Found non unique or inexistent value")
+	return values[0]
+}
+
+const registration = () => {
+	/*
+
+	function generateUserId() {
+	// ID with 120 bits of entropy, or about the same as UUID v4.
+	const bytes = crypto.getRandomValues(new Uint8Array(15));
+	const id = encodeBase32LowerCase(bytes);
+	return id;
+}
+	const formData = await event.request.formData();
+		const username = formData.get('username');
+		const password = formData.get('password');
+
+		if (!validateUsername(username)) {
+			return fail(400, { message: 'Invalid username' });
+		}
+		if (!validatePassword(password)) {
+			return fail(400, { message: 'Invalid password' });
+		}
+
+		const userId = generateUserId();
+		const passwordHash = await hash(password, {
+			// recommended minimum parameters
+			memoryCost: 19456,
+			timeCost: 2,
+			outputLen: 32,
+			parallelism: 1,
+		});
+
+		try {
+			await db.insert(table.user).values({ id: userId, username, passwordHash });
+
+			const sessionToken = auth.generateSessionToken();
+			const session = await auth.createSession(sessionToken, userId);
+			auth.setSessionTokenCookie(event, sessionToken, session.expiresAt);
+		} catch (e) {
+			return fail(500, { message: 'An error has occurred' });
+		}
+		return redirect(302, '/demo/lucia');
+	 */
+	throw new Error("unimplemented stub");
+}
+
+/*
+logout: async (event) => {
+		if (!event.locals.session) {
+			return fail(401);
+		}
+		await auth.invalidateSession(event.locals.session.id);
+		auth.deleteSessionTokenCookie(event);
+
+		return redirect(302, '/demo/lucia/login');
+	},
+ */
