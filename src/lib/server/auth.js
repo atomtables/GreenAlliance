@@ -31,12 +31,12 @@ export async function createSession(token, userId) {
 }
 
 /** @param {string} token */
-export async function validateSessionToken(token) {
+export async function 	validateSessionToken(token) {
 	const sessionId = encodeHexLowerCase(sha256(new TextEncoder().encode(token)));
 	const [result] = await db
 		.select({
 			// Adjust user table here to tweak returned data
-			user: { id: table.user.id, username: table.user.username },
+			user: table.user,
 			session: table.session
 		})
 		.from(table.session)
@@ -149,22 +149,6 @@ export let validateLogin = async (formData) => {
 	return existingUser;
 }
 
-const login = () => {
-	/*
-	try {
-		const existingUser = await validateLogin(await event.request.formData());
-
-		const sessionToken = auth.generateSessionToken();
-		const session = await auth.createSession(sessionToken, existingUser.id);
-		auth.setSessionTokenCookie(event, sessionToken, session.expiresAt);
-
-		return redirect(302, '/demo/lucia');
-	} catch (e) {
-		return fail(400, e);
-	}
-	 */
-	throw new Error("incorrect context");
-}
 
 const takeUniqueOrThrow = values => {
 	if (values.length !== 1) throw new Error("Found non unique or inexistent value")
