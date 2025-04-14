@@ -57,6 +57,9 @@ enum Permission {
 	email_moderate, // modify existing email threads
 	resources, // see team resources given
 	resources_moderate, // modify team resources given
+	users, // see existing users
+	users_modify, // modify existing users
+	users_moderate, // see all activity performed by users
 }
 
 export const user = sqliteTable('user', {
@@ -78,6 +81,14 @@ export const user = sqliteTable('user', {
 }, (table) => [
 	uniqueIndex('emailUniqueIndex').on(lower(table.email)),
 ]);
+
+// first name and last name must be accurate in order to properly allot a join code
+export const usercreatetoken = sqliteTable('usercreatetokens', {
+	joinCode: text("joinCode").primaryKey().$default(() => crypto.randomUUID()),
+	role: blob("role").$type<Role>(),
+	firstName: text("firstName"),
+	lastName: text("lastName"),
+})
 
 export function lower(email: AnySQLiteColumn): SQL {
 	return sql`lower(${email})`;
