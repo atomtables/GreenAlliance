@@ -1,101 +1,54 @@
-import {sqliteTable, text, integer, blob, uniqueIndex, type AnySQLiteColumn} from 'drizzle-orm/sqlite-core';
-import {SQL, sql} from "drizzle-orm";
+import { blob, customType, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { type Address, Permission, type PhoneNumber, Role } from "$lib/types/types";
+import { relations } from "drizzle-orm";
+import * as crypto from "node:crypto";
 
-type PhoneNumber = {
-	countryCode: number // +1
-	areaCode: number // 908
-	group1: number // 338
-	group2: number // 2903
-}
+export const json = <T>(name: string) =>
+    customType<{
+        data: T;
+        driverData: string;
+    }>({
+        dataType() { return "json" },
+        toDriver: (value: T) => JSON.stringify(value),
+        fromDriver: (value: string) => JSON.parse(value),
+    })(name);
 
-type Address = {
-	house: number // 123
-	street: string // Main St
-	line2: string // Apt 4B
-	city: string // Springfield
-	state: string // IL
-	zip: number // 62704
-}
 
-enum Role {
-	member, 		// normal person
-	lead, 			// team lead
-	mentor, 		// trusted adult
-	coach, 			// team manager (purchaser or etc)
-	administrator,	// IT personnel 🫡
-}
+export const users = sqliteTable('users', {
+    id: text('id').primaryKey().$default(() => crypto.randomUUID()),
+    age: integer('age'),
+    username: text('username').notNull().unique(),
+    passwordHash: text('password_hash').notNull(),             // @ts-ignore
+    createdAt: integer('created_at', {mode: 'timestamp'}).default(new Date()),
 
-// legitimately not that deep worst case we can mod this later without affecting any migrations
-enum Permission {
-	exist, // not be banned from looking at anything
-	interact, // not be banned from touching anything
-	announcement_react,
-	announcement_reply,
-	announcement_post,
-	announcement_delete,
-	announcement_moderate, // edit other people's announcements
-	announcement_notify, // have people get emailed or texted through announcements ($$)
-	message, // anyone on the team
-	message_leads, // team lead
-	message_mentors, // trusted adult
-	message_moderate, // see all chats
-	attendance, // mark attendance for one day
-	attendance_postpast, // mark attendance for days before
-	attendance_modify, // mark attendance for others
-	attendance_moderate, // remove attendance for others
-	inventory, // see inventory
-	inventory_changestatus, // change the location/status of certain items
-	inventory_moderate, // change inventory
-	calendar, // see calendar
-	calendar_moderate, // add/remove dates to calendar
-	calendar_notify, // add notifications to dates on a calendar ($$),
-	finance, // see finances
-	finance_request, // add a request to purchase item
-	finance_moderate, // add or remove purchased items from receipt
-	email, // see emails sent from email portal
-	email_send, // send emails from email portal
-	email_moderate, // modify existing email threads
-	resources, // see team resources given
-	resources_moderate, // modify team resources given
-	users, // see existing users
-	users_modify, // modify existing users
-	users_moderate, // see all activity performed by users
-}
+    firstName: text('first_name'),
+    lastName: text('last_name'),
+    email: text('email'),
+    phone: blob('phone').$type<PhoneNumber>(),
+    address: blob('address').$type<Address>(),
 
-export const user = sqliteTable('user', {
-	id: text('id').primaryKey(),
-	age: integer('age'),
-	username: text('username').notNull().unique(),
-	passwordHash: text('password_hash').notNull(),
-	createdAt: integer('created_at', { mode: 'timestamp' }).default(new Date()),
-
-	firstName: text('first_name'),
-	lastName: text('last_name'),
-	email: text('email'),
-	phone: blob('phone').$type<PhoneNumber>(),
-	address: blob('address').$type<Address>(),
-
-	avatar: blob('avatar'),
-	role: blob('role').$type<Role>(),
-	permissions: blob('permissions').$type<[Permission]>(),
+    avatar: blob('avatar'),
+    role: integer('role').$type<Role>(),
+    permissions: json('permissions').$type<[Permission]>(),
+    subteam: text('subteam').notNull().references(() => subteams.name).default("All"),
 }, (table) => [
-	uniqueIndex('emailUniqueIndex').on(lower(table.email)),
+    uniqueIndex('emailUniqueIndex').on(table.email),
 ]);
+
+// let's be honest there shouldn't be duplicate subteams anyway.
+export const subteams = sqliteTable('subteams', {
+    name: text('name').primaryKey()
+})
 
 // first name and last name must be accurate in order to properly allot a join code
 export const usercreatetoken = sqliteTable('usercreatetokens', {
-	joinCode: text("joinCode").primaryKey().$default(() => crypto.randomUUID()),
-	role: blob("role").$type<Role>(),
-	firstName: text("firstName"),
-	lastName: text("lastName"),
+    joinCode: text("joinCode").primaryKey().$default(() => crypto.randomUUID()),
+    role: integer("role").$type<Role>(),
+    firstName: text("firstName"),
+    lastName: text("lastName"),
 })
-
-export function lower(email: AnySQLiteColumn): SQL {
-	return sql`lower(${email})`;
-}
-
 export const session = sqliteTable('session', {
-	id: text('id').primaryKey(),
-	userId: text('user_id').notNull().references(() => user.id),
-	expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull()
+    id: text('id').primaryKey(),
+    userId: text('user_id').notNull().references(() => users.id),
+    expiresAt: integer('expires_at', {mode: 'timestamp'}).notNull()
 });

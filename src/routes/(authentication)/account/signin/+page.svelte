@@ -1,6 +1,6 @@
 <script>
     import Button from "$lib/components/Button.svelte";
-    import { enhance } from "$app/forms";
+    import {enhance} from "$app/forms";
     import {onMount} from "svelte";
 
     let loading = $state(false);

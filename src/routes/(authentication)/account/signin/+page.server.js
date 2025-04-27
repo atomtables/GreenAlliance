@@ -1,5 +1,5 @@
-import {validateLogin} from "$lib/server/auth.js";
 import * as auth from "$lib/server/auth.js";
+import {validateLogin} from "$lib/server/auth.js";
 import {fail, redirect} from "@sveltejs/kit";
 
 export const actions = {

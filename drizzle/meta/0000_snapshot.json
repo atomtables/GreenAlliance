@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "a28b35e6-a352-4444-adb3-4d144ebea541",
+  "id": "323ad2f3-3752-4cc5-ace5-4bb0633ab27f",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "session": {
@@ -86,7 +86,7 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false,
-          "default": "'\"2025-04-13T00:13:21.492Z\"'"
+          "default": "'\"2025-04-15T15:43:45.278Z\"'"
         },
         "first_name": {
           "name": "first_name",
@@ -161,6 +161,44 @@
           "isUnique": true
         }
       },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "usercreatetokens": {
+      "name": "usercreatetokens",
+      "columns": {
+        "joinCode": {
+          "name": "joinCode",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "role": {
+          "name": "role",
+          "type": "blob",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "firstName": {
+          "name": "firstName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "lastName": {
+          "name": "lastName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},

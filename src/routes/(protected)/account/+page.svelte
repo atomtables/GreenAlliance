@@ -1,5 +1,6 @@
 <script>
     import Button from "$lib/components/Button.svelte";
+    import {goto} from "$app/navigation";
 </script>
 
-<Button onClick={() => {}}>sign out</Button>
+<Button onclick={() => {goto("/account/logout")}}>sign out</Button>

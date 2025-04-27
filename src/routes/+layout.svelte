@@ -14,9 +14,7 @@
 </script>
 
 {#if user == null}
-    <style lang="postcss">
-        @reference "tailwindcss";
-
+    <style>
         .auth {
             display: none;
         }
@@ -57,7 +55,12 @@
         <HeaderTab name="About" href="/about" />
         <HeaderTab name="Account" href="/account/signin" activeUrl="/account" />
         <HeaderTab name="Account" href="/account" showOnAuth />
-        <HeaderTab name="Users" activeUrl="/users" showOnAuth isDropdown elements={[{name: "List Members", url: "/account"}, {name: "Add/Remove Members", url: "/account"}]} />
+        <HeaderTab name="Users" activeUrl="/users" showOnAuth isDropdown elements={[
+            {name: "List Members/Groups", url: "/users/list"},
+            {name: "Add/Remove Members", url: "/account"}
+        ]} />
     </div>
 </header>
-{@render children()}
+<div class="w-full h-[calc(100vh-126px)]">
+    {@render children()}
+</div>

@@ -10,7 +10,7 @@ CREATE TABLE `user` (
 	`age` integer,
 	`username` text NOT NULL,
 	`password_hash` text NOT NULL,
-	`created_at` integer DEFAULT '"2025-04-13T00:13:21.492Z"',
+	`created_at` integer DEFAULT '"2025-04-15T15:43:45.278Z"',
 	`first_name` text,
 	`last_name` text,
 	`email` text,
@@ -22,4 +22,10 @@ CREATE TABLE `user` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `user_username_unique` ON `user` (`username`);--> statement-breakpoint
-CREATE UNIQUE INDEX `emailUniqueIndex` ON `user` (lower("email"));
+CREATE UNIQUE INDEX `emailUniqueIndex` ON `user` (lower("email"));--> statement-breakpoint
+CREATE TABLE `usercreatetokens` (
+	`joinCode` text PRIMARY KEY NOT NULL,
+	`role` blob,
+	`firstName` text,
+	`lastName` text
+);

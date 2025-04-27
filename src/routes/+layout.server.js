@@ -4,3 +4,4 @@ export const load = ({ locals, url }) => {
         session: locals?.session
     };
 }
+

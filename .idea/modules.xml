@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/frcteamalliance.iml" filepath="$PROJECT_DIR$/.idea/frcteamalliance.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/TheGreenAlliance.iml" filepath="$PROJECT_DIR$/.idea/TheGreenAlliance.iml" />
     </modules>
   </component>
 </project>
