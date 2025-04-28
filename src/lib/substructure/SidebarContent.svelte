@@ -1,14 +1,22 @@
 <script>
-    import {Permission} from "$lib/types/types";
-    import User from "$lib/components/User.svelte";
     import Button from "$lib/components/Button.svelte";
     import Dropdown from "$lib/components/Dropdown.svelte";
 
-    let {tabs, contents, banner, initial} = $props();
-    let current = $state(initial ?? 0);
+    /**
+     * tabs = the icons and text that should show on the sidebar
+     * contents = the title, description, view, and shelf that should show on the content
+     * banner = temporary, this will be moved to contents
+     * initial = initial number to start the tab at.
+     */
+    let {tabs, contents, banner, initial = 0} = $props();
+    // the current tab the user is on
+    let current = $state(initial);
 
+    // the amount of pixels a user has scrolled so far
     let scrollY = $state(0);
+    // the element where the user scrolls to see content
     let w = $state();
+    // helper function to update the value of scrollY as the user scrolls the page
     const onscroll = _ => scrollY = w.scrollTop;
 </script>
 
