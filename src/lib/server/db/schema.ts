@@ -1,6 +1,5 @@
-import { blob, customType, integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
-import { type Address, Permission, type PhoneNumber, Role } from "$lib/types/types";
-import { relations } from "drizzle-orm";
+import {blob, customType, integer, sqliteTable, text, uniqueIndex} from 'drizzle-orm/sqlite-core';
+import {type Address, Permission, type PhoneNumber, Role} from "$lib/types/types";
 import * as crypto from "node:crypto";
 
 export const json = <T>(name: string) =>
@@ -14,12 +13,13 @@ export const json = <T>(name: string) =>
     })(name);
 
 
+
 export const users = sqliteTable('users', {
     id: text('id').primaryKey().$default(() => crypto.randomUUID()),
     age: integer('age'),
     username: text('username').notNull().unique(),
-    passwordHash: text('password_hash').notNull(),             // @ts-ignore
-    createdAt: integer('created_at', {mode: 'timestamp'}).default(new Date()),
+    passwordHash: text('password_hash').notNull(),                    // @ts-ignore
+    createdAt: integer('created_at', {mode: 'timestamp'}).$default(() => new Date()),
 
     firstName: text('first_name'),
     lastName: text('last_name'),
@@ -41,11 +41,13 @@ export const subteams = sqliteTable('subteams', {
 })
 
 // first name and last name must be accurate in order to properly allot a join code
-export const usercreatetoken = sqliteTable('usercreatetokens', {
-    joinCode: text("joinCode").primaryKey().$default(() => crypto.randomUUID()),
+export const joincodes = sqliteTable('joincodes', {
+    joinCode: text("joinCode").primaryKey(),
     role: integer("role").$type<Role>(),
     firstName: text("firstName"),
     lastName: text("lastName"),
+    createdAt: integer('created_at', {mode: 'timestamp'}).$default(() => new Date()).notNull(),
+    usedAt: integer('used_at', {mode: 'timestamp'}),
 })
 export const session = sqliteTable('session', {
     id: text('id').primaryKey(),

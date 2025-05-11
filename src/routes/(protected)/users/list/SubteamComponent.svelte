@@ -1,9 +1,9 @@
 <script>
-    /** throwaway component because snippets don't hold their water */
+    /** throwaway component because snippets don't hold their water (each can't have state) */
     import Dropdown from "$lib/components/Dropdown.svelte";
     import Button from "$lib/components/Button.svelte";
-    import { translateRole } from "$lib/components/User.svelte";
-    import { slide } from "svelte/transition";
+    import {translateRole} from "$lib/components/User.svelte";
+    import {slide} from "svelte/transition";
 
     let { subteam, users } = $props()
     let display = $state(true);
@@ -28,7 +28,7 @@
         </div>
         <div class="grow"></div>
         <div class=" hover:bg-neutral-500/25 active:bg-neutral-500/50 grid place-items-center transition-colors">
-            <Dropdown items={["Change subteam", "Contact"]}/>
+            <Dropdown items={["Contact Leads"]}/>
         </div>
     </div>
 {/snippet}

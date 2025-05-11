@@ -3,8 +3,6 @@
     import {Permission} from "$lib/types/types";
     import User from "$lib/components/User.svelte";
     import SidebarContent from "$lib/substructure/SidebarContent.svelte";
-    import Dropdown from "$lib/components/Dropdown.svelte";
-    import Button from "$lib/components/Button.svelte";
     import SubteamComponent from "./SubteamComponent.svelte";
     import banner1 from "./banner1.jpg";
     import {goto} from "$app/navigation";
@@ -22,7 +20,7 @@
         </div>
     {:then users}
         {#if members === 0}
-            <div class="text-gray-200 text-sm font-bold">
+            <div class="text-subheader">
                 ADMINISTRATORS
             </div>
             {#if data.user.permissions.includes(Permission.users_modify)}
@@ -129,7 +127,7 @@
         {
             title: "All Members",
             content: listmembers,
-            shelf: [{ name: `Group by ${members === 0 ? 'role' : 'date created'}`, selections: ["Role", "Date Created"], action: n => members = n }]
+            shelf: [{ name: `Group by ${members === 0 ? 'role' : 'date created'}`, selections: ["Role", "Date Created"], action: n => members = n }, data.user.permissions.includes(Permission.users_modify) && { name: "Modify Members", action: () => goto("/users/modify") }].filter(val => typeof val !== "boolean")
         },
         {
             title: "All Subteams",

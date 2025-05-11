@@ -16,3 +16,7 @@ html {
 .material-symbols-outlined {
     user-select: none;
 }
+
+.text-subheader {
+    @apply text-gray-200 text-sm font-bold uppercase;
+}

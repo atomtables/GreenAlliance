@@ -57,7 +57,7 @@
         <HeaderTab name="Account" href="/account" showOnAuth />
         <HeaderTab name="Users" activeUrl="/users" showOnAuth isDropdown elements={[
             {name: "List Members/Groups", url: "/users/list"},
-            {name: "Add/Remove Members", url: "/account"}
+            {name: "Modify Members/Groups", url: "/users/modify"}
         ]} />
     </div>
 </header>

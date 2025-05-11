@@ -2,6 +2,7 @@
     import Button from "$lib/components/Button.svelte";
     import {enhance} from "$app/forms";
     import {onMount} from "svelte";
+    import Input from "$lib/components/Input.svelte";
 
     let loading = $state(false);
     let { form } = $props();
@@ -24,16 +25,8 @@
         Sign in
     </div>
     <div class="p-5">
-        <div class="flex flex-col py-2 w-96">
-            <label for="username" class="text-sm">Username</label>
-            <input type="text" name="username" id="username" placeholder="defaultuser0"
-                   class="bg-gray-100 text-xl dark:bg-gray-900 border-none m-0 mt-1"/>
-        </div>
-        <div class="flex flex-col py-2 w-96">
-            <label for="password" class="text-sm">Password</label>
-            <input type="password" name="password" id="password" placeholder="***********"
-                   class="bg-gray-100 text-xl dark:bg-gray-900 border-none m-0 mt-1">
-        </div>
+        <Input name="Username" type="text" id="username"/>
+        <Input name="Password" type="password" id="password"/>
         <div class="text-sm dark:text-red-300 text-red-700 max-w-96">
             {form?.error}
         </div>

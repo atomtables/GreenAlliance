@@ -32,7 +32,7 @@
             {/each}
         </div>
         <div class="bg-gray-600/50 flex-1 grow-1 overflow-scroll" bind:this={w} {onscroll}>
-            {#each contents as { title, content, shelf }, ind}
+            {#each contents as {title, description, content, shelf}, ind}
                 {#if ind === current}
                     {#if banner}
                         <div class="relative w-full h-1/2 overflow-hidden">
@@ -46,8 +46,11 @@
                         </div>
                     {/if}
                     <div class="">
-                        <div class="-translate-y-19">
-                            <h1 class="max-w-2xl m-auto font-bold text-5xl py-2 {shelf?.length > 0 ? 'pb-5' : 'pb-8'}">{title}</h1>
+                        <div class="-translate-y-27">
+                            <h1 class="max-w-2xl m-auto font-bold text-5xl pt-2 pb-2 {!description && 'pb-3'}">{title}</h1>
+                            {#if description}
+                                <h4 class="max-w-2xl m-auto {shelf?.length > 0 ? 'pb-5' : 'pb-8'}">{description}</h4>
+                            {/if}
                             {#if shelf && shelf.length > 0}
                                 <div class="bg-green-700 p-2 mb-3 w-full">
                                     <div class="max-w-2xl mx-auto min-w-max flex flex-row space-x-2 overflow-visible flex-nowrap -translate-x-5">
