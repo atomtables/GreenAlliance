@@ -1,6 +1,5 @@
 <script>
-    export let size = 40;
-    export let strokeWidth = 4;
+    let {size = 40, strokeWidth = 4, class: className} = $props();
 </script>
 
 <style>
@@ -39,9 +38,9 @@
 </style>
 
 <svg
-        class="spinner"
-        width="{size}"
-        height="{size}"
+        class="spinner {className}"
+        width={size}
+        height={size}
         viewBox="0 0 50 50"
 >
     <defs>
@@ -57,6 +56,6 @@
             cy="25"
             r="20"
             fill="none"
-            stroke-width="{strokeWidth}"
+            stroke-width={strokeWidth}
     />
 </svg>

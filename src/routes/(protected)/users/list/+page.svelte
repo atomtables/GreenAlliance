@@ -103,8 +103,6 @@
     {/await}
 {/snippet}
 {#snippet listsubteams()}
-
-
     <div>
         {#await data.subteams}
             <Spinner />
@@ -127,7 +125,16 @@
         {
             title: "All Members",
             content: listmembers,
-            shelf: [{ name: `Group by ${members === 0 ? 'role' : 'date created'}`, selections: ["Role", "Date Created"], action: n => members = n }, data.user.permissions.includes(Permission.users_modify) && { name: "Modify Members", action: () => goto("/users/modify") }].filter(val => typeof val !== "boolean")
+            shelf: [
+                {
+                    name: `Group by ${members === 0 ? 'role' : 'date created'}`,
+                    selections: ["Role", "Date Created"],
+                    action: n => members = n
+                }, data.user.permissions.includes(Permission.users_modify) && {
+                    name: "Modify Members",
+                    action: () => goto("/users/modify")
+                }
+            ].filter(val => typeof val !== "boolean")
         },
         {
             title: "All Subteams",

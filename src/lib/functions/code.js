@@ -6,3 +6,11 @@ export const createCode = (j) => {
     }
     return code;
 }
+
+export const formatDate = date => {
+    return date.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "numeric",
+        day: "numeric",
+    })
+}

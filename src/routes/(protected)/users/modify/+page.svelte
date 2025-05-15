@@ -3,15 +3,16 @@
     import SidebarContent from "$lib/substructure/SidebarContent.svelte";
     import banner1 from "../list/banner1.jpg";
     import {goto, invalidate} from "$app/navigation";
-    import Dialog from "$lib/components/Dialog.svelte";
+    import Dialog, {alert, confirm} from "$lib/components/Dialog.svelte";
     import Spinner from "$lib/components/Spinner.svelte";
     import Input from "$lib/components/Input.svelte";
+    import Table from "$lib/components/Table.svelte";
+    import {formatDate} from "$lib/functions/code.js";
 
     let {data} = $props();
 
     let createOpen = $state(false);
     let createError = $state(null);
-    let createCompleteOpen = $state(false);
     let createPromptData = $state({firstName: "", lastName: "", role: -1});
 
     const createAction = async () => {
@@ -28,15 +29,12 @@
         createOpen = false;
         await invalidate("user:joincodes")
         createPromptData.joinCode = res['data']['joinCode']
-        createCompleteOpen = true;
-    }
-
-    const formatDate = date => {
-        return date.toLocaleDateString(undefined, {
-            year: "numeric",
-            month: "numeric",
-            day: "numeric",
-        })
+        await alert(
+            "Successfully Created Join Code",
+            `When ${createPromptData.firstName} creates an account, ask them to use this code on the sign up screen.`,
+            `<div class="text-5xl font-bold text-center pt-2">${createPromptData.joinCode}</div>`
+        )
+        createPromptData = {firstName: "", lastName: "", role: -1}
     }
 </script>
 
@@ -49,45 +47,49 @@
     {#await data.joinCodes.active}
         <Spinner/>
     {:then activeJoinCodes}
-        <table class="bg-gray-700 w-full text-left">
-            <thead>
-            <tr class="border-b-2 border-gray-400">
-                <th class="w-8 px-2">
-                    <Input type="checkbox"/>
-                </th>
-                <th class="text-gray-200 px-2">
-                    Join Code
-                </th>
-                <th class="text-gray-200 px-2">
-                    First Name
-                </th>
-                <th class="text-gray-200 px-2">
-                    Last Name
-                </th>
-                <th class="text-gray-200 px-2">
-                    Created on
-                </th>
-            </tr>
-            </thead>
-            <tbody>
-            {#if activeJoinCodes.length > 0}
-                {#each activeJoinCodes as {firstName, lastName, joinCode, createdAt}}
-                    <tr class="text-white">
-                        <th class="w-8 px-2"><Input type="checkbox"/></th>
-                        <th class="px-2">{joinCode}</th>
-                        <th class="px-2">{firstName}</th>
-                        <th class="px-2">{lastName}</th>
-                        <th class="px-2">{formatDate(createdAt)}</th>
-                    </tr>
-                {/each}
-            {:else}
-                <tr>
-                    <th></th>
-                    <th class="px-2 py-2"><i>No join codes were used in the last week.</i></th>
-                </tr>
-            {/if}
-            </tbody>
-        </table>
+        <Table source={activeJoinCodes} emptyStr="No join codes are currently active."
+               actions={[{ name: "Delete", icon: "delete", action: async (selected, reset) => {
+                     let {value, close} = await confirm(
+                        "Delete Join Codes",
+                        "Are you sure you want to delete these join codes?",
+                        `<div>
+                            <b class="text-xl">${selected.map(e => activeJoinCodes[e].joinCode).join(", ")}</b>
+                            <br>
+                            <div>These join codes will be invalidated and will not be able to create a new account.</div>
+                        </div>`, true
+                    )
+                    if (!value) return;
+                    let req = await fetch("/api/users/joincodes", {
+                        method: "DELETE",
+                        body: JSON.stringify(selected.map(e => activeJoinCodes[e].joinCode)),
+                        headers: {'Content-Type': 'application/json'}
+                    })
+                    if (!req.ok) {
+                        close();
+                        await alert("Failed to Delete Join Codes", "The join codes were unable to be deleted and are still active. Please try again later.")
+                        return;
+                    }
+                    await invalidate("user:joincodes")
+                    reset();
+                    close();
+                    await alert(
+                        "Successfully Deleted Join Codes",
+                        `The join codes have been deleted and are no longer valid to create new accounts.`,
+                    )
+               }}]}>
+            {#snippet header()}
+                <th>Join Code</th>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>Created on</th>
+            {/snippet}
+            {#snippet template({joinCode, firstName, lastName, createdAt}, i)}
+                <th class="px-2">{joinCode}</th>
+                <th class="px-2">{firstName}</th>
+                <th class="px-2">{lastName}</th>
+                <th class="px-2">{formatDate(createdAt)}</th>
+            {/snippet}
+        </Table>
     {/await}
     <div class="text-subheader py-2">
         Previously Used Join Codes
@@ -95,45 +97,23 @@
     {#await data.joinCodes.used}
         <Spinner/>
     {:then activeJoinCodes}
-        <table class="bg-gray-700 w-full text-left">
-            <thead>
-            <tr class="border-b-2 border-gray-400">
-                <th class="w-8 px-2">
-                    <Input type="checkbox"/>
-                </th>
-                <th class="text-gray-200 px-2">
-                    Join Code
-                </th>
-                <th class="text-gray-200 px-2">
-                    First Name
-                </th>
-                <th class="text-gray-200 px-2">
-                    Last Name
-                </th>
-                <th class="text-gray-200 px-2">
-                    Created on
-                </th>
-            </tr>
-            </thead>
-            <tbody>
-            {#if activeJoinCodes.length > 0}
-                {#each activeJoinCodes as {firstName, lastName, joinCode, createdAt}}
-                    <tr class="text-white">
-                        <th class="w-8 px-2"><Input type="checkbox"/></th>
-                        <th class="px-2">{joinCode}</th>
-                        <th class="px-2">{firstName}</th>
-                        <th class="px-2">{lastName}</th>
-                        <th class="px-2">{formatDate(createdAt)}</th>
-                    </tr>
-                {/each}
-            {:else}
-                <tr>
-                    <th></th>
-                    <th class="px-2 py-2"><i>No join codes were used in the last week.</i></th>
-                </tr>
-            {/if}
-            </tbody>
-        </table>
+        <Table
+                source={activeJoinCodes}
+                emptyStr="No join codes have been used in the last week."
+        >
+            {#snippet header()}
+                <th>Join Code</th>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>Created on</th>
+            {/snippet}
+            {#snippet template({joinCode, firstName, lastName, createdAt})}
+                <th class="px-2">{joinCode}</th>
+                <th class="px-2">{firstName}</th>
+                <th class="px-2">{lastName}</th>
+                <th class="px-2">{formatDate(createdAt)}</th>
+            {/snippet}
+        </Table>
     {/await}
 {/snippet}
 
@@ -141,7 +121,10 @@
         open={createOpen}
         title="Create a join code"
         description="Generate a code to be used for a user to create their account."
-        actions={[{ name: "Cancel", action: () => createOpen = false }, { name: "Create", action: createAction, primary: true }]}>
+        actions={[
+            { name: "Cancel", action: () => createOpen = false },
+            { name: "Create", action: createAction, primary: true }
+        ]}>
     <div class="flex flex-row space-x-2">
         <Input name="First Name" id="firstname" bind:value={createPromptData.firstName}/>
         <Input name="Last Name" id="lastname" bind:value={createPromptData.lastName}/>
@@ -153,14 +136,6 @@
     {#if createError}
         <div class="text-red-400">An error occured while creating a join code: <b>{createError}</b></div>
     {/if}
-</Dialog>
-
-<Dialog
-        open={createCompleteOpen}
-        title="Successfully Created Join Code"
-        description="When {createPromptData.firstName} creates an account, ask them to use this code on the sign up screen."
-        actions={[{ name: "OK", action: () => { createCompleteOpen = false; createPromptData = {firstName: "", lastName: "", role: -1};}, primary: true }]}>
-    <div class="text-5xl font-bold text-center pt-2">{createPromptData.joinCode}</div>
 </Dialog>
 
 <SidebarContent

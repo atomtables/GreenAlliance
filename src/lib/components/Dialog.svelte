@@ -1,9 +1,138 @@
+<script module>
+    import {createRawSnippet, mount, unmount} from "svelte";
+    import Dialog from "./Dialog.svelte"
+
+    async function never(promise) {
+        let run = true;
+        while (run) {
+            promise.then(() => run = false);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+    }
+
+    export const alert = async (title, description, children, manualclose) => {
+        let state;
+        const result = new Promise(resolve => state = resolve);
+        let close;
+        const manual = new Promise(resolve => close = resolve);
+
+        let element = document.createElement("div");
+        document.body.appendChild(element);
+
+        let props = $state({
+            open: false,
+            title,
+            description,
+            actions: [{
+                name: "OK",
+                action: async () => {
+                    await state(true);
+                    if (manualclose) await never(manual);
+                },
+                primary: true
+            }],
+            children: createRawSnippet(() => ({
+                render: () => children ?? "<div></div>"
+            }))
+        })
+
+        const dialog = mount(Dialog, {
+            target: element,
+            props
+        })
+
+        props.open = true
+
+        let value = await result;
+        if (manualclose) {
+            manual.then(() => {
+                props.open = false;
+                setTimeout(async () => {
+                    await unmount(dialog);
+                    element.remove();
+                }, 400)
+            })
+            value = {close}
+        } else {
+            props.open = false;
+            setTimeout(async () => {
+                await unmount(dialog);
+                element.remove();
+            }, 400)
+        }
+        return value;
+    }
+
+    export const confirm = async (title, description, children, manualclose) => {
+        let state;
+        const result = new Promise(resolve => state = resolve);
+        let close;
+        const manual = new Promise(resolve => close = resolve);
+
+        let element = document.createElement("div");
+        document.body.appendChild(element);
+
+        let props = $state({
+            open: false,
+            title,
+            description,
+            actions: [{
+                name: "Cancel",
+                action: async () => {
+                    state(false)
+                    if (manualclose) await never(manual);
+                },
+                close: true
+            }, {
+                name: "Yes",
+                action: async () => {
+                    state(true)
+                    if (manualclose) await never(manual);
+                },
+                primary: true,
+                close: true
+            }],
+            children: createRawSnippet(() => ({
+                render: () => children ?? "<div></div>"
+            }))
+        })
+
+        const dialog = mount(Dialog, {
+            target: element,
+            props
+        })
+
+        props.open = true
+
+        let value = await result;
+        if (manualclose) {
+            manual.then(() => {
+                props.open = false;
+                setTimeout(async () => {
+                    await unmount(dialog);
+                    element.remove();
+                }, 400)
+            })
+            value = {value, close}
+        } else {
+            props.open = false;
+            setTimeout(async () => {
+                await unmount(dialog);
+                element.remove();
+            }, 400)
+            value = {value}
+        }
+        return value;
+    }
+</script>
+
 <script>
     import Button from "$lib/components/Button.svelte";
     import {fade} from "svelte/transition";
     import {quadInOut} from "svelte/easing";
 
     let {open, title, description, actions, children} = $props();
+    const closeF = () => open = false;
 </script>
 
 {#if open}
@@ -21,12 +150,13 @@
             </div>
 
             <div class="px-6 py-2">
-                {@render children()}
+                {@render children?.()}
             </div>
 
             <div class="px-6 pb-4 pt-4 flex justify-end gap-2">
-                {#each actions as {name, action, primary}}
-                    <Button transparent={!primary} onclick={action}>
+                {#each actions as {name, action, primary, close}}
+                    <Button transparent={!primary}
+                            onclick={!close ? action : async () => { await action(); closeF(); }}>
                         {name}
                     </Button>
                 {/each}

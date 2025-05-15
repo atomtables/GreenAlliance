@@ -8,6 +8,7 @@
         class: className = '',
         className: containerClassName = '',
         value = $bindable(),
+        action,
         elements
     } = $props();
 
@@ -53,6 +54,7 @@
                     id={id}
                     type="checkbox"
                     bind:checked={value}
+                    onclick={action}
                     class="peer opacity-0 absolute z-10 cursor-pointer"
             />
             <div class="w-4 h-4 transition-all duration-250
