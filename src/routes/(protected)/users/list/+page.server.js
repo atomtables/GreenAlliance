@@ -2,7 +2,7 @@ import {Permission, Role} from "$lib/types/types";
 import {redirect} from "@sveltejs/kit";
 import {db} from "$lib/server/db/index.js";
 import {subteams, users} from "$lib/server/db/schema.js";
-import {eq, ne} from "drizzle-orm";
+import {ne} from "drizzle-orm";
 
 export const load = ({locals}) => {
     if (!locals.user.permissions.includes(Permission.users)) return redirect(302, "/home")

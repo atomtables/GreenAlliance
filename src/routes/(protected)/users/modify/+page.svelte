@@ -49,7 +49,7 @@
     {:then activeJoinCodes}
         <Table source={activeJoinCodes} emptyStr="No join codes are currently active."
                actions={[{ name: "Delete", icon: "delete", action: async (selected, reset) => {
-                     let {value, close} = await confirm(
+                     let [value, close] = await confirm(
                         "Delete Join Codes",
                         "Are you sure you want to delete these join codes?",
                         `<div>
@@ -72,10 +72,7 @@
                     await invalidate("user:joincodes")
                     reset();
                     close();
-                    await alert(
-                        "Successfully Deleted Join Codes",
-                        `The join codes have been deleted and are no longer valid to create new accounts.`,
-                    )
+                    await alert("Successfully Deleted Join Codes", `The join codes have been deleted and are no longer valid to create new accounts.`,)
                }}]}>
             {#snippet header()}
                 <th>Join Code</th>
@@ -83,7 +80,7 @@
                 <th>Last Name</th>
                 <th>Created on</th>
             {/snippet}
-            {#snippet template({joinCode, firstName, lastName, createdAt}, i)}
+            {#snippet template({joinCode, firstName, lastName, createdAt})}
                 <th class="px-2">{joinCode}</th>
                 <th class="px-2">{firstName}</th>
                 <th class="px-2">{lastName}</th>
@@ -140,15 +137,30 @@
 
 <SidebarContent
         tabs={[
-        { name: "Join Codes", icon: "link" },
+        { name: "Members", icon: "groups"},
         { name: "Subteams", icon: "diversity_3"},
     ]}
         contents={[
         {
-            title: "Join Codes",
-            description: "Allow users to create an account through the use of a join code.",
-            content: joincodes,
-            shelf: [{ name: `Create join code`, action: () => createOpen = true }]
+            nested: true,
+            nestedTabs: [
+                { name: "Roster", icon: "groups" },
+                { name: "Join Codes", icon: "link" },
+            ],
+            nestedContents: [
+                {
+                    title: "Team Roster",
+                    description: "View and modify all members of the team.",
+                    content: blank,
+                    shelf: [{ name: `Create join code`, action: () => createOpen = true }]
+                },
+                {
+                    title: "Join Codes",
+                    description: "Allow users to create an account through the use of a join code.",
+                    content: joincodes,
+                    shelf: [{ name: `Create join code`, action: () => createOpen = true }]
+                },
+            ]
         },
         {
             title: "All Subteams",

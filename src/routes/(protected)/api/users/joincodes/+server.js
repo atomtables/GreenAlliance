@@ -3,8 +3,13 @@ import {joincodes} from "$lib/server/db/schema.js";
 import {error, json} from "@sveltejs/kit";
 import {createCode} from "$lib/functions/code.js";
 import {inArray} from "drizzle-orm";
+import {Permission} from "$lib/types/types"
 
-export const PUT = async ({request}) => {
+export const PUT = async ({request, locals}) => {
+    if (!locals?.user?.permissions?.includes?.(Permission.users_modify)) return error(403, {
+        success: false,
+        error: "Access denied."
+    })
     try {
         let {firstName, lastName, role} = await request.json();
         console.log(firstName, lastName, role);
@@ -30,7 +35,11 @@ export const PUT = async ({request}) => {
     }
 }
 
-export const DELETE = async ({request}) => {
+export const DELETE = async ({request, locals}) => {
+    if (!locals?.user?.permissions?.includes?.(Permission.users_modify)) return error(403, {
+        success: false,
+        error: "Access denied."
+    })
     try {
         let joinCodes = await request.json();
         console.log("deleting join codes", joinCodes)

@@ -1,5 +1,5 @@
 <script>
-    import { slide } from 'svelte/transition';
+    import {slide} from 'svelte/transition';
     import Button from "$lib/components/Button.svelte";
 
     let { items, onselect: onSelect, class: buttonClass, buttonText, direction } = $props();

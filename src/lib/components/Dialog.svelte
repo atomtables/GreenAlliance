@@ -43,7 +43,7 @@
 
         props.open = true
 
-        let value = await result;
+        let value = [await result];
         if (manualclose) {
             manual.then(() => {
                 props.open = false;
@@ -52,7 +52,6 @@
                     element.remove();
                 }, 400)
             })
-            value = {close}
         } else {
             props.open = false;
             setTimeout(async () => {
@@ -113,14 +112,14 @@
                     element.remove();
                 }, 400)
             })
-            value = {value, close}
+            value = [value, close]
         } else {
             props.open = false;
             setTimeout(async () => {
                 await unmount(dialog);
                 element.remove();
             }, 400)
-            value = {value}
+            value = [value]
         }
         return value;
     }

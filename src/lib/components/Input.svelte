@@ -31,7 +31,7 @@
         transform: none;
     }
 </style>
-<div class="relative py-2 input-container {className}">
+<div class="relative py-2 input-container w-full {className}">
     <label class="transition-all floating-label text-gray-400 {isFocused && 'text-green-400'} {hasText && 'up'}"
            for={id}>
         {name}
