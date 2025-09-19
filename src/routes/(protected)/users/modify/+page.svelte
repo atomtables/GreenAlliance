@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
     import {Permission} from "$lib/types/types";
     import SidebarContent from "$lib/substructure/SidebarContent.svelte";
     import banner1 from "../list/banner1.jpg";
@@ -13,9 +13,9 @@
 
     let createOpen = $state(false);
     let createError = $state(null);
-    let createPromptData = $state({firstName: "", lastName: "", role: -1});
+    let createPromptData = $state({firstName: "", lastName: "", role: -1, joinCode: null});
 
-    const createAction = async () => {
+    const createJoinCode = async () => {
         let req = await fetch("/api/users/joincodes", {
             method: "PUT",
             body: JSON.stringify(createPromptData),
@@ -34,7 +34,7 @@
             `When ${createPromptData.firstName} creates an account, ask them to use this code on the sign up screen.`,
             `<div class="text-5xl font-bold text-center pt-2">${createPromptData.joinCode}</div>`
         )
-        createPromptData = {firstName: "", lastName: "", role: -1}
+        createPromptData = {firstName: "", lastName: "", role: -1, joinCode: null}
     }
 </script>
 
@@ -56,7 +56,7 @@
                             <b class="text-xl">${selected.map(e => activeJoinCodes[e].joinCode).join(", ")}</b>
                             <br>
                             <div>These join codes will be invalidated and will not be able to create a new account.</div>
-                        </div>`, true
+                        </div>`, false, true
                     )
                     if (!value) return;
                     let req = await fetch("/api/users/joincodes", {
@@ -114,13 +114,36 @@
     {/await}
 {/snippet}
 
+<!-- Dialog box to create a join code -->
 <Dialog
         open={createOpen}
         title="Create a join code"
         description="Generate a code to be used for a user to create their account."
         actions={[
             { name: "Cancel", action: () => createOpen = false },
-            { name: "Create", action: createAction, primary: true }
+            { name: "Create", action: createJoinCode, primary: true }
+        ]}>
+    <div class="flex flex-row space-x-2">
+        <Input name="First Name" id="firstname" bind:value={createPromptData.firstName}/>
+        <Input name="Last Name" id="lastname" bind:value={createPromptData.lastName}/>
+    </div>
+    <div class="flex flex-row">
+        <Input name="Role" id="role" type="dropdown" elements={["Member", "Team Lead", "Captain", "Mentor", "Coach"]}
+               bind:value={createPromptData.role}/>
+    </div>
+    {#if createError}
+        <div class="text-red-400">An error occured while creating a join code: <b>{createError}</b></div>
+    {/if}
+</Dialog>
+
+<!-- Dialog box to manually add a new user -->
+<Dialog
+        open={createOpen}
+        title="Create a join code"
+        description="Generate a code to be used for a user to create their account."
+        actions={[
+            { name: "Cancel", action: () => createOpen = false },
+            { name: "Create", action: createJoinCode, primary: true }
         ]}>
     <div class="flex flex-row space-x-2">
         <Input name="First Name" id="firstname" bind:value={createPromptData.firstName}/>
@@ -136,25 +159,22 @@
 </Dialog>
 
 <SidebarContent
-        tabs={[
-        { name: "Members", icon: "groups"},
-        { name: "Subteams", icon: "diversity_3"},
-    ]}
-        contents={[
+        items={[
         {
-            nested: true,
-            nestedTabs: [
-                { name: "Roster", icon: "groups" },
-                { name: "Join Codes", icon: "link" },
-            ],
-            nestedContents: [
+            tabName: "Members",
+            tabIcon: "groups",
+            nestedItems: [
                 {
+                    tabName: "Roster",
+                    tabIcon: "groups",
                     title: "Team Roster",
                     description: "View and modify all members of the team.",
                     content: blank,
                     shelf: [{ name: `Create join code`, action: () => createOpen = true }]
                 },
                 {
+                    tabName: "Join Codes",
+                    tabIcon: "link",
                     title: "Join Codes",
                     description: "Allow users to create an account through the use of a join code.",
                     content: joincodes,
@@ -163,6 +183,8 @@
             ]
         },
         {
+            tabName: "Subteams",
+            tabIcon: "diversity_3",
             title: "All Subteams",
             content: blank,
             shelf: [data.user.permissions.includes(Permission.users_modify) && { name: "Modify Subteams", action: () => goto("/users/modify") }].filter(val => typeof val !== "boolean")

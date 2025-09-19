@@ -60,3 +60,22 @@ export enum Permission {
     users_modify, // modify existing users
     users_moderate, // see all activity performed by users
 }
+
+export type User = {
+    id: string,
+    age: number,
+    username: string,
+    passwordHash: null,
+    createdAt: number,
+
+    firstName: string,
+    lastName: string,
+    email: string,
+    phone: any,
+    address: any,
+
+    avatar: string,
+    role: Role,
+    permissions: Permission[],
+    subteam: string,
+}

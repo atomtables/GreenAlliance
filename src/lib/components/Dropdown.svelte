@@ -1,8 +1,20 @@
-<script>
+<script lang="ts">
     import {slide} from 'svelte/transition';
     import Button from "$lib/components/Button.svelte";
 
-    let { items, onselect: onSelect, class: buttonClass, buttonText, direction } = $props();
+    let { 
+        items, 
+        onselect: onSelect = () => null, 
+        class: buttonClass = "", 
+        buttonText = null, 
+        direction = "left" 
+    }: {
+        items: string[],
+        onselect: Function,
+        class?: string,
+        buttonText?: string,
+        direction?: "left" | "right"
+    } = $props();
     let open = $state(false);
 
     const toggle = () => (open = !open);

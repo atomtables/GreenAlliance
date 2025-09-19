@@ -1,16 +1,26 @@
-<script>
+<script lang="ts">
     import Input from "$lib/components/Input.svelte";
     import {slide} from "svelte/transition";
     import Button from "$lib/components/Button.svelte";
+    import type { Snippet } from "svelte";
 
     let {
         source,
         header,
         template,
-        emptyStr,
-        actions,
+        emptyStr = "No data to show right now.",
+        actions = [],
         checkable = true,
         selected = $bindable([]),
+    }: {
+        source: any[],
+        header: Snippet,
+        template: Snippet<[any, number]>,
+        // what to show when empty
+        emptyStr?: string,
+        actions?: {name: string, icon: string, action: Function}[],
+        checkable?: boolean,
+        selected?: boolean[]
     } = $props();
 
     let all = $state(false);
@@ -79,7 +89,7 @@
     <tr class="border-b-2 border-gray-400 text-gray-200 *:px-2">
         {#if checkable}
             <th class="w-8">
-                <Input type="checkbox" bind:value={all} action={() => toggleAll()}/>
+                <Input type="checkbox" name="" bind:value={all} action={() => toggleAll()}/>
             </th>
         {/if}
         {@render header()}
@@ -90,7 +100,8 @@
         {#each source as data, i}
             <tr class="text-white *:px-2 hover:bg-neutral-500/40 transition-all">
                 {#if checkable}
-                    <th class="w-8 px-2"><Input type="checkbox" bind:value={selected[i]} action={() => toggleOne(i)}/>
+                    <th class="w-8 px-2">
+                        <Input name="" type="checkbox" bind:value={selected[i]} action={() => toggleOne(i)}/>
                     </th>
                 {/if}
                 {@render template(data, i)}

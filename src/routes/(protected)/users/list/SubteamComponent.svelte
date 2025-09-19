@@ -1,11 +1,15 @@
-<script>
+<script lang="ts">
     /** throwaway component because snippets don't hold their water (each can't have state) */
     import Dropdown from "$lib/components/Dropdown.svelte";
     import Button from "$lib/components/Button.svelte";
     import {translateRole} from "$lib/components/User.svelte";
     import {slide} from "svelte/transition";
+    import type {User} from "$lib/types/types.ts"
 
-    let { subteam, users } = $props()
+    let { subteam, users }: {
+        subteam: string,
+        users: User[]
+    } = $props()
     let display = $state(true);
 </script>
 

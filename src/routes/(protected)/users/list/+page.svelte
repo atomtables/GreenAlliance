@@ -117,12 +117,10 @@
 {/snippet}
 
 <SidebarContent
-    tabs={[
-        { name: "Members", icon: "group" },
-        { name: "Subteams", icon: "diversity_3"},
-    ]}
-    contents={[
+    items={[
         {
+            tabName: "Members",
+            tabIcon: "group",
             title: "All Members",
             content: listmembers,
             shelf: [
@@ -137,6 +135,8 @@
             ].filter(val => typeof val !== "boolean")
         },
         {
+            tabName: "Subteams",
+            tabIcon: "diversity_3",
             title: "All Subteams",
             content: listsubteams,
             shelf: [data.user.permissions.includes(Permission.users_modify) && { name: "Modify Subteams", action: () => goto("/users/modify") }].filter(val => typeof val !== "boolean")

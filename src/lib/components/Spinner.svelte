@@ -1,5 +1,13 @@
-<script>
-    let {size = 40, strokeWidth = 4, class: className} = $props();
+<script lang="ts">
+    let {
+        size = 40, 
+        strokeWidth = 4, 
+        class: className
+    }: {
+        size?: number,
+        strokeWidth?: number,
+        class?: string
+    } = $props();
 </script>
 
 <style>

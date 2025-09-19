@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
     import {draw} from "svelte/transition";
 
     let {
@@ -6,10 +6,17 @@
         type = 'text',
         id = name,
         class: className = '',
-        className: containerClassName = '',
         value = $bindable(),
-        action,
-        elements
+        action = () => null,
+        elements = []
+    }: {
+        name: string,
+        type?: string,
+        id?: string,
+        class?: string,
+        value: any,
+        action?: Function,
+        elements?: string[]
     } = $props();
 
     let isFocused = $state(false);
@@ -38,7 +45,7 @@
     </label>
     {#if type === "dropdown"}
         <select
-                bind:value={value} {type} name={id} {id}
+                bind:value={value} name={id} {id}
                 class="w-full px-3 pt-5 pb-2 bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded text-base focus:outline-none focus:ring-2 focus:ring-green-500 transition-all {className}"
                 onfocus={() => isFocused = true}
                 onblur={() => isFocused = false}
@@ -54,7 +61,7 @@
                     id={id}
                     type="checkbox"
                     bind:checked={value}
-                    onclick={action}
+                    onclick={() => action()}
                     class="peer opacity-0 absolute z-10 cursor-pointer"
             />
             <div class="w-4 h-4 transition-all duration-250

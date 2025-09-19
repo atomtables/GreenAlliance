@@ -1,23 +1,42 @@
-<script>
+<script lang="ts">
     import Button from "$lib/components/Button.svelte";
     import Dropdown from "$lib/components/Dropdown.svelte";
+    import type { Snippet } from "svelte";
     import SidebarContent from "./SidebarContent.svelte";
     import {slide} from "svelte/transition";
 
-    /**
-     * tabs = the icons and text that should show on the sidebar
-     * contents = the title, description, view, and shelf that should show on the content
-     * banner = temporary, this will be moved to contents
-     * initial = initial number to start the tab at.
-     */
-    let {tabs, contents, banner, initial = 0, nested = false} = $props();
+    type ComponentProps = {
+        items: {
+            // Name shown on the tab (should optimally be one word)
+            tabName: string,
+            // Icon shown on the tab (reference material symbols)
+            tabIcon: string,
+            title?: string,
+            description?: string,
+            content?: Snippet,
+            shelf?: {
+                name: string,
+                selections?: string[] | null,
+                action: Function
+            }[],
+            custom?: boolean,
+            nestedItems?: ComponentProps["items"]
+        }[],
+        // URL to the banner (preferably a vite import)
+        banner: string,
+        // the initial tab the user should start on
+        initial?: number,
+        // internal use only value for styling
+        nested?: boolean
+    }
+    let {items, banner, initial = 0, nested = false}: ComponentProps = $props();
     // the current tab the user is on
     let current = $state(initial);
 
     // the amount of pixels a user has scrolled so far
     let scrollY = $state(0);
     // the element where the user scrolls to see content
-    let w = $state();
+    let w: HTMLElement = $state();
     let wait = $state(false);
     // helper function to update the value of scrollY as the user scrolls the page
     const onscroll = _ => {
@@ -36,9 +55,8 @@
 
 <div class="w-full h-full {!nested && 'p-10'}">
     <div class="w-full h-full flex flex-row flex-nowrap {!nested && 'border-2 border-gray-600'} ">
-        <div class="w-64 border-r-2 border-gray-600 {!nested ? 'bg-gray-600' : 'bg-gray-700'} shrink-0"
-             transition:slide>
-            {#each tabs as {name, icon}, ind}
+        <div class="w-64 border-r-2 border-gray-600 {!nested ? 'bg-gray-600' : 'bg-gray-700'} shrink-0">
+            {#each items as {tabName: name, tabIcon: icon}, ind}
                 <button onclick={() => current = ind}
                         class="block grow w-full {ind === current ? 'bg-neutral-500/50' : 'hover:bg-neutral-500/25 active:bg-neutral-500/50'} uppercase font-bold py-5 px-2 text-lg flex items-center gap-2 transition-all">
                     <span class="material-symbols-outlined icons-fill text-xl -translate-y-0.25 pl-5 pr-5">{icon}</span>
@@ -47,13 +65,13 @@
             {/each}
         </div>
         <div class="bg-gray-600/50 flex-1 grow-1 overflow-scroll" bind:this={w} {onscroll}>
-            {#each contents as {title, description, content, shelf, custom, nested, nestedTabs, nestedContents}, ind}
+            {#each items as {title, description, content, shelf, custom, nestedItems = null}, ind}
                 {#if ind === current}
                     {#if custom}
-                        {@render content({setPage: v => current = v})}
+                        {@render content()}
                     {:else}
-                        {#if nested}
-                            <SidebarContent tabs={nestedTabs} contents={nestedContents} {banner} nested/>
+                        {#if nestedItems}
+                            <SidebarContent items={nestedItems} {banner} initial={0} nested/>
                         {:else}
                             {#if banner}
                                 <div class="relative w-full h-1/2 overflow-hidden">
@@ -91,7 +109,7 @@
                                             </div>
                                         {/if}
                                     </div>
-                                    <div class="max-w-2xl m-auto">{@render content({setPage: v => current = v})}</div>
+                                    <div class="max-w-2xl m-auto">{@render content()}</div>
                                 </div>
                             </div>
                         {/if}

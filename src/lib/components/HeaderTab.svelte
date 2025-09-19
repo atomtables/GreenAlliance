@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
     import {page} from "$app/state";
     import {slide} from "svelte/transition";
     import Spinner from "$lib/components/Spinner.svelte";
@@ -42,12 +42,12 @@
 
 {#if isDropdown}
     <div
-            class="font-bold text-gray-800 dark:text-gray-300 hover:text-inherit hover:bg-neutral-500/40 active:bg-neutral-400/40 {dropdownActive && '!bg-neutral-400/40 !text-inherit'} cursor-pointer transition-all {((url?.includes(href) || url?.includes(activeUrl)) && hlpr()) && 'current-tab'} {!custom && (showOnAuth ? 'auth' : 'noauth')} {className}">
+            class="font-bold text-gray-800 dark:text-gray-300 hover:text-inherit hover:bg-neutral-500/40 active:bg-neutral-400/40 {dropdownActive && '!bg-neutral-400/40 !text-inherit'} cursor-pointer transition-all {((url?.includes(href) || url?.includes(activeUrl)) && hlpr(activeUrl)) && 'current-tab'} {!custom && (showOnAuth ? 'auth' : 'noauth')} {className}">
         <button class="block py-4 px-5 uppercase" onclick={() => dropdownActive = !dropdownActive}>{name}</button>
         {#if dropdownActive}
             <span class="absolute flex flex-col bg-gray-200 dark:bg-gray-800 text-left z-49" transition:slide={{axis: 'y'}}>
                 {#each elements as {name, url: u}}
-                    <HeaderTabHelper {u} {name} condition={u?.includes(url) && hlpr(u)}
+                    <HeaderTabHelper {u} {name} condition={((url?.includes(u)) && hlpr(u))}
                                      onLoad={() => dropdownActive = !dropdownActive}/>
                 {/each}
             </span>
@@ -58,7 +58,7 @@
             onclick={() => handleClick()}>
         <span class="flex flex-row space-x-2">
             {#if resolving}
-                <Spinner size="24"/>
+                <Spinner size={24}/>
             {/if}
             {name}
         </span>
