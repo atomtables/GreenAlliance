@@ -1,5 +1,5 @@
 <script lang="ts">
-    import {Permission} from "$lib/types/types";
+    import {Permission, Role} from "$lib/types/types";
     import SidebarContent from "$lib/substructure/SidebarContent.svelte";
     import banner1 from "../list/banner1.jpg";
     import {goto, invalidate} from "$app/navigation";
@@ -8,10 +8,14 @@
     import Input from "$lib/components/Input.svelte";
     import Table from "$lib/components/Table.svelte";
     import {formatDate} from "$lib/functions/code.js";
+    import User from "$lib/components/User.svelte";
+    import type {User as UserType} from "$lib/types/types";
+    import SubteamComponent from "../list/SubteamComponent.svelte";
 
     let {data} = $props();
+    let members = $state(0);
 
-    let createOpen = $state(false);
+    let createJoinCodeOpen = $state(false);
     let createError = $state(null);
     let createPromptData = $state({firstName: "", lastName: "", role: -1, joinCode: null});
 
@@ -26,7 +30,7 @@
             createError = res['error'];
             return;
         }
-        createOpen = false;
+        createJoinCodeOpen = false;
         await invalidate("user:joincodes")
         createPromptData.joinCode = res['data']['joinCode']
         await alert(
@@ -114,13 +118,66 @@
     {/await}
 {/snippet}
 
+{#snippet listmembers()}
+    {#await data.users}
+        <div class="flex flex-row items-middle justify-center w-full space-x-2">
+            <Spinner />
+            Loading...
+        </div>
+    {:then users}
+        {@const val = console.log(users)}
+        <Table source={Object.values(users).flat()}>
+            {#snippet header()}
+                <th>Last Name</th>
+                <th>First Name</th>
+                <th>Role</th>
+                <th>Joined</th>
+                <th>Email</th>
+            {/snippet}
+            {#snippet template({firstName, lastName, role, createdAt, email})}
+            {@const val = console.log(firstName)}
+                <th class="px-2">{lastName}</th>
+                <th class="px-2">{firstName}</th>
+                <th class="px-2">{
+                    role === Role.administrator ? 'adm.' :
+                    role === Role.coach ? 'coa.' :
+                    role === Role.mentor ? 'ment.' :
+                    role === Role.captain ? 'capt.' :
+                    role === Role.lead ? 'lead.' :
+                    role === Role.member ? 'mem.' : '?'
+                }</th>
+                <th class="px-2">{createdAt.getFullYear()}</th>
+                <th class="px-2">{email}</th>
+            {/snippet}
+        </Table>
+    {/await}
+{/snippet}
+{#snippet listsubteams()}
+    <div>
+        {#await data.subteams}
+            <Spinner />
+        {:then subteams}
+            <div class="space-y-2">
+                {#each subteams as { subteam, users }}
+                    <SubteamComponent {subteam} {users} />
+                {/each}
+            </div>
+        {/await}
+    </div>
+{/snippet}
+
 <!-- Dialog box to create a join code -->
 <Dialog
-        open={createOpen}
+        open={createJoinCodeOpen}
         title="Create a join code"
         description="Generate a code to be used for a user to create their account."
         actions={[
-            { name: "Cancel", action: () => createOpen = false },
+            {
+                name: `Group by ${members === 0 ? 'role' : 'date created'}`,
+                selections: ["Role", "Date Created"],
+                action: n => members = n
+            },
+            { name: "Cancel", action: () => createJoinCodeOpen = false },
             { name: "Create", action: createJoinCode, primary: true }
         ]}>
     <div class="flex flex-row space-x-2">
@@ -138,11 +195,11 @@
 
 <!-- Dialog box to manually add a new user -->
 <Dialog
-        open={createOpen}
+        open={createJoinCodeOpen}
         title="Create a join code"
         description="Generate a code to be used for a user to create their account."
         actions={[
-            { name: "Cancel", action: () => createOpen = false },
+            { name: "Cancel", action: () => createJoinCodeOpen = false },
             { name: "Create", action: createJoinCode, primary: true }
         ]}>
     <div class="flex flex-row space-x-2">
@@ -169,8 +226,13 @@
                     tabIcon: "groups",
                     title: "Team Roster",
                     description: "View and modify all members of the team.",
-                    content: blank,
-                    shelf: [{ name: `Create join code`, action: () => createOpen = true }]
+                    content: listmembers,
+                    shelf: [
+                        { name: `Add Member`, action: () => {alert("Add Member", "To add a member, you should create a join code with their name and their role on the team. This will allow them to set up their account themselves.")} },
+                        { name: `Print Roster`, action: () => {
+                            
+                        }}
+                    ]
                 },
                 {
                     tabName: "Join Codes",
@@ -178,7 +240,7 @@
                     title: "Join Codes",
                     description: "Allow users to create an account through the use of a join code.",
                     content: joincodes,
-                    shelf: [{ name: `Create join code`, action: () => createOpen = true }]
+                    shelf: [{ name: `Create join code`, action: () => createJoinCodeOpen = true }]
                 },
             ]
         },
