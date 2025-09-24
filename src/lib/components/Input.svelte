@@ -8,7 +8,8 @@
         class: className = '',
         value = $bindable(),
         action = () => null,
-        elements = []
+        elements = [],
+        pattern = ''
     }: {
         name: string,
         type?: string,
@@ -16,7 +17,8 @@
         class?: string,
         value: any,
         action?: Function,
-        elements?: string[]
+        elements?: string[],
+        pattern?: string
     } = $props();
 
     let isFocused = $state(false);
