@@ -6,10 +6,40 @@
     import SubteamComponent from "./SubteamComponent.svelte";
     import banner1 from "./banner1.jpg";
     import {goto} from "$app/navigation";
+    import jsPDF from "jspdf";
 
     let { data } = $props();
 
     let members = $state(0);
+
+    async function generatePDF() {
+        const users = await data.users;
+        console.log(users);
+        const doc = new jsPDF("p", "mm", "a4");
+        let yPosition = 20;
+        const leftMargin = 15;
+
+        // Title
+        doc.setFontSize(18);
+        doc.text("Team Members", leftMargin, yPosition);
+        yPosition += 10;
+
+        // Body
+        const positions = Object.keys(users);
+        Object.values(users).forEach((pos, i) => {
+            doc.setFontSize(14);
+            if (i !== 0) yPosition += 7;
+            doc.text(positions[i], leftMargin, yPosition);
+            yPosition += 7;
+            doc.setFontSize(11);
+            pos.forEach(user => {
+                doc.text(user.firstName, leftMargin, yPosition);
+                yPosition += 5;
+            })
+        })
+
+        doc.save("roster.pdf");
+    }
 </script>
 
 {#snippet listmembers()}
@@ -128,6 +158,9 @@
                     name: `Group by ${members === 0 ? 'role' : 'date created'}`,
                     selections: ["Role", "Date Created"],
                     action: n => members = n
+                }, {
+                    name: "Download by position",
+                    action: generatePDF
                 }, data.user.permissions.includes(Permission.users_modify) && {
                     name: "Modify Members",
                     action: () => goto("/users/modify")
