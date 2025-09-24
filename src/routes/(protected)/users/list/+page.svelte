@@ -12,31 +12,48 @@
 
     let members = $state(0);
 
-    async function generatePDF() {
-        const users = await data.users;
-        console.log(users);
-        const doc = new jsPDF("p", "mm", "a4");
-        let yPosition = 20;
-        const leftMargin = 15;
+    async function generatePDF(n) {
 
-        // Title
-        doc.setFontSize(18);
-        doc.text("Team Members", leftMargin, yPosition);
-        yPosition += 10;
+            const doc = new jsPDF("p", "mm", "a4");
+            let yPosition = 20;
+            const leftMargin = 15;
 
-        // Body
-        const positions = Object.keys(users);
-        Object.values(users).forEach((pos, i) => {
-            doc.setFontSize(14);
-            if (i !== 0) yPosition += 7;
-            doc.text(positions[i], leftMargin, yPosition);
-            yPosition += 7;
-            doc.setFontSize(11);
-            pos.forEach(user => {
-                doc.text(user.firstName, leftMargin, yPosition);
-                yPosition += 5;
+            // Title
+            doc.setFontSize(18);
+            doc.text("Team Members", leftMargin, yPosition);
+            yPosition += 10;
+        if (n === 0) {
+            const users = await data.users;
+
+            // Body
+            const positions = Object.keys(users);
+            Object.values(users).forEach((pos, i) => {
+                doc.setFontSize(14);
+                if (i !== 0) yPosition += 7;
+                doc.text(positions[i], leftMargin, yPosition);
+                yPosition += 7;
+                doc.setFontSize(11);
+                pos.forEach(user => {
+                    doc.text(user.firstName, leftMargin, yPosition);
+                    yPosition += 5;
+                })
             })
-        })
+        } else if (n === 1) {
+            const users = await data.subteams;
+
+            // Body
+            users.forEach((subteam, i) => {
+                doc.setFontSize(14);
+                if (i !== 0) yPosition += 7;
+                doc.text(subteam["subteam"], leftMargin, yPosition);
+                yPosition += 7;
+                doc.setFontSize(11);
+                subteam["users"].forEach(user => {
+                    doc.text(user.firstName, leftMargin, yPosition);
+                    yPosition += 5;
+                })
+            })
+        }
 
         doc.save("roster.pdf");
     }
@@ -159,8 +176,8 @@
                     selections: ["Role", "Date Created"],
                     action: n => members = n
                 }, {
-                    name: "Download by position",
-                    action: generatePDF
+                    name: "Download by Position",
+                    action: () => {generatePDF(0)}
                 }, data.user.permissions.includes(Permission.users_modify) && {
                     name: "Modify Members",
                     action: () => goto("/users/modify")
@@ -172,7 +189,12 @@
             tabIcon: "diversity_3",
             title: "All Subteams",
             content: listsubteams,
-            shelf: [data.user.permissions.includes(Permission.users_modify) && { name: "Modify Subteams", action: () => goto("/users/modify") }].filter(val => typeof val !== "boolean")
+            shelf: [
+                {
+                    name: "Download by Subteam",
+                    action: () => {generatePDF(1)}
+                }, data.user.permissions.includes(Permission.users_modify) && { name: "Modify Subteams", action: () => goto("/users/modify") }
+            ].filter(val => typeof val !== "boolean")
         }
     ]}
     banner={banner1}
