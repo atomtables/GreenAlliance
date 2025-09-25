@@ -17,6 +17,14 @@ const passwordHash = await hash("password", {
     parallelism: 1,
 });
 
+// First, create the subteams
+const subteamNames = ["All", "Electrical", "Mechanical", "Business", "Software"];
+for (const subteamName of subteamNames) {
+    await database.insert(schema.subteams).values({
+        name: subteamName
+    });
+}
+
 // this is the admin
 await database.insert(schema.users).values({
     id: crypto.randomUUID(),

@@ -11,6 +11,7 @@ export const actions = {
             const session = await auth.createSession(sessionToken, existingUser.id);
             auth.setSessionTokenCookie(e, sessionToken, session.expiresAt);
         } catch (e) {
+            console.log(e);
             return fail(400, {"error": `${e.error?.message}`});
         }
 

@@ -45,7 +45,7 @@ export const load = ({locals}) => {
            }
            return result;
         }),
-        subteams: db.select().from(subteams).then(async subteams =>
+        subteamsWithMembers: db.select().from(subteams).then(async subteams =>
             await Promise.all(subteams.map(({ name: subteam }) =>
                 userselect
                     .then(users => {

@@ -1,6 +1,7 @@
 import {blob, customType, integer, sqliteTable, text, uniqueIndex} from 'drizzle-orm/sqlite-core';
 import {type Address, Permission, type PhoneNumber, Role} from "$lib/types/types";
 import * as crypto from "node:crypto";
+import { sql } from 'drizzle-orm';
 
 export const json = <T>(name: string) =>
     customType<{
@@ -13,7 +14,10 @@ export const json = <T>(name: string) =>
     })(name);
 
 
-
+/**
+ * Users table
+ * @description contains all important information about users
+ */
 export const users = sqliteTable('users', {
     id: text('id').primaryKey().$default(() => crypto.randomUUID()),
     age: integer('age'),
@@ -53,4 +57,21 @@ export const session = sqliteTable('session', {
     id: text('id').primaryKey(),
     userId: text('user_id').notNull().references(() => users.id),
     expiresAt: integer('expires_at', {mode: 'timestamp'}).notNull()
+});
+
+export const meetings = sqliteTable('meetings', {
+    id: text('id').primaryKey().$default(() => crypto.randomUUID()),
+    createdAt: integer('created_at', {mode: 'timestamp'}).notNull().$default(() => new Date()),
+    createdBy: text('user').notNull().references(() => users.id),
+    title: text('title').notNull(),
+    description: text('description'),
+    dateOf: integer('date_of', {mode: 'timestamp'}).notNull(),
+    subteams: text('subteams', { mode: 'json' }).$type<string[]>().notNull().default(sql`'[]'`),
+})
+
+export const meetingAttendees = sqliteTable('meeting_attendees', {
+    id: integer('id').primaryKey(),
+    meetingId: text('meeting_id').notNull().references(() => meetings.id),
+    userId: text('user_id').notNull().references(() => users.id),
+    status: text('status').$type<'yes' | 'no' | 'maybe'>(),
 });

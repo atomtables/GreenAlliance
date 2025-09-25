@@ -6,8 +6,6 @@
     let {data, children} = $props();
     let {user, session} = data;
 
-    console.log(user);
-
     let url = $derived(page.url.pathname);
     let showDropdown = $state(false);
 
@@ -57,6 +55,10 @@
         <HeaderTab name="Account" href="/account" showOnAuth />
         <HeaderTab name="Users" activeUrl="/users" showOnAuth isDropdown elements={[
             {name: "List Members/Groups", url: "/users/list"},
+            {name: "Modify Members/Groups", url: "/users/modify"}
+        ]} />
+        <HeaderTab name="Meetings" activeUrl="/meetings" showOnAuth isDropdown elements={[
+            {name: "Calendar", url: "/meetings/calendar"},
             {name: "Modify Members/Groups", url: "/users/modify"}
         ]} />
     </div>

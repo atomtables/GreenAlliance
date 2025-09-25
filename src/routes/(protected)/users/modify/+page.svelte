@@ -172,33 +172,6 @@
         title="Create a join code"
         description="Generate a code to be used for a user to create their account."
         actions={[
-            {
-                name: `Group by ${members === 0 ? 'role' : 'date created'}`,
-                selections: ["Role", "Date Created"],
-                action: n => members = n
-            },
-            { name: "Cancel", action: () => createJoinCodeOpen = false },
-            { name: "Create", action: createJoinCode, primary: true }
-        ]}>
-    <div class="flex flex-row space-x-2">
-        <Input name="First Name" id="firstname" bind:value={createPromptData.firstName}/>
-        <Input name="Last Name" id="lastname" bind:value={createPromptData.lastName}/>
-    </div>
-    <div class="flex flex-row">
-        <Input name="Role" id="role" type="dropdown" elements={["Member", "Team Lead", "Captain", "Mentor", "Coach"]}
-               bind:value={createPromptData.role}/>
-    </div>
-    {#if createError}
-        <div class="text-red-400">An error occured while creating a join code: <b>{createError}</b></div>
-    {/if}
-</Dialog>
-
-<!-- Dialog box to manually add a new user -->
-<Dialog
-        open={createJoinCodeOpen}
-        title="Create a join code"
-        description="Generate a code to be used for a user to create their account."
-        actions={[
             { name: "Cancel", action: () => createJoinCodeOpen = false },
             { name: "Create", action: createJoinCode, primary: true }
         ]}>

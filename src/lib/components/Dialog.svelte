@@ -11,7 +11,7 @@
         }
     }
 
-    export const alert = async (title: string, description: string, children = null, manualclose = false) => {
+    export const alert = async (title: string, description: string = "", children = null, manualclose = false) => {
         let state;
         const result = new Promise(resolve => state = resolve);
         let close;
@@ -94,7 +94,7 @@
                 primary: true,
                 close: true
             }],
-            children: isSnippet ? children : createRawSnippet(() => ({
+            children: isSnippet ? children as Snippet : createRawSnippet(() => ({
                 render: () => children.toString() ?? "<div></div>"
             }))
         })
@@ -266,8 +266,22 @@
     import Spinner from "$lib/components/Spinner.svelte";
     import {fade} from "svelte/transition";
     import {quadInOut} from "svelte/easing";
+    import type { AsyncFunction } from "$lib/prototypes/prototypes";
 
-    let {open, title, description = "", actions = [], children = null, loading = false} = $props();
+
+    let {open = $bindable(), title, description = "", actions = [], children = null, loading = false}: {
+        open: boolean,
+        title: string,
+        description?: string,
+        actions: {
+            name: string,
+            action: AsyncFunction | Function,
+            primary?: boolean,
+            close?: boolean
+        }[],
+        children?: Snippet,
+        loading?: boolean
+    } = $props();
     const closeF = () => open = false;
 </script>
 
@@ -298,7 +312,7 @@
                 <div class="px-6 pb-4 pt-4 flex justify-end gap-2">
                     {#each actions as {name, action, primary, close}}
                         <Button transparent={!primary}
-                                onclick={!close ? action : async () => { await action(); closeF(); }}>
+                                onclick={!close ? action?.() : async () => { await action?.(); closeF(); }}>
                             {name}
                         </Button>
                     {/each}

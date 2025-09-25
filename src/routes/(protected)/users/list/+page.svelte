@@ -104,7 +104,7 @@
 {/snippet}
 {#snippet listsubteams()}
     <div>
-        {#await data.subteams}
+        {#await data.subteamsWithMembers}
             <Spinner />
         {:then subteams}
             <div class="space-y-2">

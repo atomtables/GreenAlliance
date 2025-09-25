@@ -125,13 +125,23 @@ export let validateLogin = async (formData) => {
 		throw new ValidationError({ error: "password", message: 'Invalid password (min 6, max 255 characters)' })
 	}
 
-	const results = db
+	let results;
+	try {
+		results = db
 		.select()
 		.from(table.users)
 		.where(eq(table.users.username, username))
+	} catch (e) {
+		throw new ValidationError({ error: "authentication", message: 'Incorrect username or password' })
+	}
 
-	const existingUser = await results.then(takeUniqueOrThrow);
-	if (!existingUser) {
+	let existingUser;
+	try {
+		existingUser = await results.then(takeUniqueOrThrow);
+		if (!existingUser) {
+			throw new ValidationError({ error: "authentication", message: 'Incorrect username or password' })
+		}
+	} catch (e) {
 		throw new ValidationError({ error: "authentication", message: 'Incorrect username or password' })
 	}
 

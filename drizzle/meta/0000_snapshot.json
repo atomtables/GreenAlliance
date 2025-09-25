@@ -1,9 +1,200 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "323ad2f3-3752-4cc5-ace5-4bb0633ab27f",
+  "id": "6f983476-6eea-442b-8873-bcac4c5d69fe",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
+    "joincodes": {
+      "name": "joincodes",
+      "columns": {
+        "joinCode": {
+          "name": "joinCode",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "role": {
+          "name": "role",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "firstName": {
+          "name": "firstName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "lastName": {
+          "name": "lastName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "used_at": {
+          "name": "used_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "meeting_attendees": {
+      "name": "meeting_attendees",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "meeting_id": {
+          "name": "meeting_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "meeting_attendees_meeting_id_meetings_id_fk": {
+          "name": "meeting_attendees_meeting_id_meetings_id_fk",
+          "tableFrom": "meeting_attendees",
+          "tableTo": "meetings",
+          "columnsFrom": [
+            "meeting_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "meeting_attendees_user_id_users_id_fk": {
+          "name": "meeting_attendees_user_id_users_id_fk",
+          "tableFrom": "meeting_attendees",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "meetings": {
+      "name": "meetings",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user": {
+          "name": "user",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "date_of": {
+          "name": "date_of",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "subteams": {
+          "name": "subteams",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'[]'"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "meetings_user_users_id_fk": {
+          "name": "meetings_user_users_id_fk",
+          "tableFrom": "meetings",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
     "session": {
       "name": "session",
       "columns": {
@@ -31,10 +222,10 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "session_user_id_user_id_fk": {
-          "name": "session_user_id_user_id_fk",
+        "session_user_id_users_id_fk": {
+          "name": "session_user_id_users_id_fk",
           "tableFrom": "session",
-          "tableTo": "user",
+          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
@@ -49,8 +240,25 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "user": {
-      "name": "user",
+    "subteams": {
+      "name": "subteams",
+      "columns": {
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "users": {
+      "name": "users",
       "columns": {
         "id": {
           "name": "id",
@@ -85,8 +293,7 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": false,
-          "autoincrement": false,
-          "default": "'\"2025-04-15T15:43:45.278Z\"'"
+          "autoincrement": false
         },
         "first_name": {
           "name": "first_name",
@@ -132,22 +339,30 @@
         },
         "role": {
           "name": "role",
-          "type": "blob",
+          "type": "integer",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
         },
         "permissions": {
           "name": "permissions",
-          "type": "blob",
+          "type": "json",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "subteam": {
+          "name": "subteam",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'All'"
         }
       },
       "indexes": {
-        "user_username_unique": {
-          "name": "user_username_unique",
+        "users_username_unique": {
+          "name": "users_username_unique",
           "columns": [
             "username"
           ],
@@ -156,50 +371,26 @@
         "emailUniqueIndex": {
           "name": "emailUniqueIndex",
           "columns": [
-            "lower(\"email\")"
+            "email"
           ],
           "isUnique": true
         }
       },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "usercreatetokens": {
-      "name": "usercreatetokens",
-      "columns": {
-        "joinCode": {
-          "name": "joinCode",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "role": {
-          "name": "role",
-          "type": "blob",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "firstName": {
-          "name": "firstName",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "lastName": {
-          "name": "lastName",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+      "foreignKeys": {
+        "users_subteam_subteams_name_fk": {
+          "name": "users_subteam_subteams_name_fk",
+          "tableFrom": "users",
+          "tableTo": "subteams",
+          "columnsFrom": [
+            "subteam"
+          ],
+          "columnsTo": [
+            "name"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
-      "indexes": {},
-      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
@@ -213,14 +404,6 @@
     "columns": {}
   },
   "internal": {
-    "indexes": {
-      "emailUniqueIndex": {
-        "columns": {
-          "lower(\"email\")": {
-            "isExpression": true
-          }
-        }
-      }
-    }
+    "indexes": {}
   }
 }

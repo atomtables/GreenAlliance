@@ -8,19 +8,21 @@
         class: className = '',
         value = $bindable(),
         action = () => null,
-        elements = []
+        elements = [],
+        ...attributes
     }: {
-        name: string,
+        name?: string,
         type?: string,
         id?: string,
         class?: string,
         value: any,
         action?: Function,
-        elements?: string[]
+        elements?: string[],
+        [key: string]: any;
     } = $props();
 
     let isFocused = $state(false);
-    let hasText = $derived((value || (typeof value === "number" && value + 1)) && (value?.length > 0 || value + 1 >= 1))
+    let hasText = $derived(type === 'date' || (value || (typeof value === "number" && value + 1)) && (value?.length > 0 || value + 1 >= 1))
 </script>
 
 <style>
@@ -39,13 +41,13 @@
     }
 </style>
 <div class="relative py-2 input-container w-full {className}">
-    <label class="transition-all floating-label text-gray-400 {isFocused && 'text-green-400'} {hasText && 'up'}"
+    <label class="{type === 'date' && '-ml-0'} transition-all floating-label text-gray-400 {isFocused && 'text-green-400'} {hasText && 'up'}"
            for={id}>
         {name}
     </label>
     {#if type === "dropdown"}
         <select
-                bind:value={value} name={id} {id}
+                bind:value={value} name={id} {id} {...attributes}
                 class="w-full px-3 pt-5 pb-2 bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded text-base focus:outline-none focus:ring-2 focus:ring-green-500 transition-all {className}"
                 onfocus={() => isFocused = true}
                 onblur={() => isFocused = false}
@@ -63,6 +65,7 @@
                     bind:checked={value}
                     onclick={() => action()}
                     class="peer opacity-0 absolute z-10 cursor-pointer"
+                    {...attributes}
             />
             <div class="w-4 h-4 transition-all duration-250
                 border-2 border-gray-300 peer-checked:border-green-600 peer-checked:bg-green-600
@@ -87,7 +90,7 @@
         </div>
     {:else}
         <input
-                bind:value={value} {type} name={id} {id}
+                bind:value={value} {type} name={id} {id} {...attributes}
                 class="w-full px-3 pt-5 pb-2 bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded text-base focus:outline-none focus:ring-2 focus:ring-green-500 transition-all {className}"
                 onfocus={() => isFocused = true}
                 onblur={() => isFocused = false}
