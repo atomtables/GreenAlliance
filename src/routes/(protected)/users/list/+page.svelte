@@ -6,10 +6,91 @@
     import SubteamComponent from "./SubteamComponent.svelte";
     import banner1 from "./banner1.jpg";
     import {goto} from "$app/navigation";
+    import jsPDF from "jspdf";
+    import { bulletPoint, titleize, underlineText } from "$lib/functions/code";
 
     let { data } = $props();
 
     let members = $state(0);
+
+    async function generatePDF(n) {
+
+            const doc = new jsPDF("p", "mm", "a4");
+            let yPosition = 20;
+            const leftMargin = 15;
+
+            // Title
+            doc.setFontSize(18);
+            underlineText(doc, "Team Members", leftMargin, yPosition, 0.7, 0.7);
+            yPosition += 10;
+        if (n === 0) {
+            const users = await data.users;
+
+            // Body
+            const positions = Object.keys(users);
+            Object.values(users).forEach((pos, i) => {
+                if (yPosition > doc.internal.pageSize.getHeight() - 20) {
+                    doc.addPage();
+                    yPosition = 20;
+                }
+                doc.setFontSize(14);
+                if (i !== 0) yPosition += 7;
+                doc.text(titleize(positions[i]), leftMargin, yPosition);
+                yPosition += 7;
+                doc.setFontSize(11);
+                pos.forEach(user => {
+
+                    if (yPosition > doc.internal.pageSize.getHeight() - 20) {
+                        doc.addPage();
+                        yPosition = 20;
+                    }
+                    
+                    const userInfo = [`Name: ${titleize(user.firstName)} ${titleize(user.lastName)}`, `Subteam: ${user.subteam}`, `Email: ${user.email}`]
+                    bulletPoint(doc, userInfo, leftMargin, yPosition);
+
+                    yPosition += 15;
+                })
+            })
+        } else if (n === 1) {
+            const users = await data.subteams;
+            const positions = {
+                0: "Member",
+                1: "Team Lead",
+                2: "Captain",
+                3: "Mentor",
+                4: "Coach",
+                5: "Administrator"
+            }
+
+            // Body
+            users.forEach((subteam, i) => {
+                if (yPosition > doc.internal.pageSize.getHeight() - 20) {
+                    doc.addPage();
+                    yPosition = 20;
+                }
+                doc.setFontSize(14);
+                if (i !== 0) yPosition += 7;
+                doc.text(subteam["subteam"], leftMargin, yPosition);
+                yPosition += 7;
+                doc.setFontSize(11);
+
+                subteam["users"].forEach(user => {
+
+                    if (yPosition > doc.internal.pageSize.getHeight() - 20) {
+                        doc.addPage();
+                        yPosition = 20;
+                    }
+
+                    const userInfo = [`Name: ${titleize(user.firstName)} ${titleize(user.lastName)}`, `Position: ${positions[user.role]}`, `Email: ${user.email}`]
+                    bulletPoint(doc, userInfo, leftMargin, yPosition);
+                    yPosition += 15;
+                })
+
+            })
+        }
+
+        doc.output("dataurlnewwindow");
+    }
 </script>
 
 {#snippet listmembers()}
@@ -128,6 +209,9 @@
                     name: `Group by ${members === 0 ? 'role' : 'date created'}`,
                     selections: ["Role", "Date Created"],
                     action: n => members = n
+                }, {
+                    name: "Download by Position",
+                    action: () => {generatePDF(0)}
                 }, data.user.permissions.includes(Permission.users_modify) && {
                     name: "Modify Members",
                     action: () => goto("/users/modify")
@@ -139,7 +223,12 @@
             tabIcon: "diversity_3",
             title: "All Subteams",
             content: listsubteams,
-            shelf: [data.user.permissions.includes(Permission.users_modify) && { name: "Modify Subteams", action: () => goto("/users/modify") }].filter(val => typeof val !== "boolean")
+            shelf: [
+                {
+                    name: "Download by Subteam",
+                    action: () => {generatePDF(1)}
+                }, data.user.permissions.includes(Permission.users_modify) && { name: "Modify Subteams", action: () => goto("/users/modify") }
+            ].filter(val => typeof val !== "boolean")
         }
     ]}
     banner={banner1}

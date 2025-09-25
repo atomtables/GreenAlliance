@@ -158,55 +158,102 @@ export let validateLogin = async (formData) => {
 	return existingUser;
 }
 
+const normalizeData = data => {
+    return data.toString().toLowerCase().trim();
+}
+
+const validateUnique = async (type, val) => {
+	const existingUser = await db.query.users.findFirst({
+		where: eq(table.users[type], val)
+	});
+
+	return existingUser;
+}
+
+const validateName = name => {
+	return typeof name === "string" &&
+		/^[a-z]+$/.test(name);
+}
+
+const validatePhone = phone => {
+	return typeof phone === "string" &&
+		/^[0-9]{10}$/.test(phone);
+}
+
+const validateAge = age => {
+	return typeof age === "string" &&
+		age > 0 && age < 100 &&
+		/^[0-9]+$/.test(age);
+}
+
+export const validateRegister = async (formData) => {
+	const username = normalizeData(formData.get("username"));
+	const password = formData.get("password")?.toString();
+	const phone = normalizeData(formData.get("phone"));
+	const address = normalizeData(formData.get("address"));
+	const age = normalizeData(formData.get("age"));
+	const firstName = normalizeData(formData.get("fname"));
+	const lastName = normalizeData(formData.get("lname"));
+	const email = normalizeData(formData.get("email"));
+
+	if (!validateName(firstName) || !validateName(lastName)) {
+		throw new Error("NAME_WRONG");
+	}
+
+	if (!validateAge(age)) {
+		throw new Error("AGE_WRONG");
+	}
+
+	if (!validatePhone(phone)) {
+		throw new Error("PHONE_WRONG");
+	}
+
+	if (!validateUsername(username)) {
+		throw new Error("USERNAME_WRONG");
+	}
+	if (!validatePassword(password)) {
+		throw new Error("PASSWORD_WRONG");
+	}
+
+	if (await validateUnique("email", email)) {
+		throw new Error("EMAIL_EXISTS");
+	}
+
+	if (await validateUnique("phone", phone)) {
+		throw new Error("PHONE_EXISTS");
+	}
+
+	if (await validateUnique("username", username)) {
+		throw new Error("USERNAME_EXISTS");
+	}
+
+	const passwordHash = await hash(password, {
+		// recommended minimum parameters
+		memoryCostr: 19456,
+		timeCost: 2,
+		outputLen: 32,
+		parallelism: 1,
+	});
+
+	const id = crypto.randomUUID();
+
+	// this is the admin
+	await db.insert(schema.users).values({
+		id: id,
+		username,
+		passwordHash,
+		phone,
+		address,
+		age: 15,
+		firstName,
+		lastName,
+		email,
+	});
+
+	return id;
+}
 
 const takeUniqueOrThrow = values => {
 	if (values.length !== 1) throw new Error("Found non unique or inexistent value")
 	return values[0]
 }
-
-const registration = () => {
-	/*
-
-	function generateUserId() {
-	// ID with 120 bits of entropy, or about the same as UUID v4.
-	const bytes = crypto.getRandomValues(new Uint8Array(15));
-	const id = encodeBase32LowerCase(bytes);
-	return id;
-}
-	const formData = await event.request.formData();
-		const username = formData.get('username');
-		const password = formData.get('password');
-
-		if (!validateUsername(username)) {
-			return fail(400, { message: 'Invalid username' });
-		}
-		if (!validatePassword(password)) {
-			return fail(400, { message: 'Invalid password' });
-		}
-
-		const userId = generateUserId();
-		const passwordHash = await hash(password, {
-			// recommended minimum parameters
-			memoryCost: 19456,
-			timeCost: 2,
-			outputLen: 32,
-			parallelism: 1,
-		});
-
-		try {
-			await db.insert(table.user).values({ id: userId, username, passwordHash });
-
-			const sessionToken = auth.generateSessionToken();
-			const session = await auth.createSession(sessionToken, userId);
-			auth.setSessionTokenCookie(event, sessionToken, session.expiresAt);
-		} catch (e) {
-			return fail(500, { message: 'An error has occurred' });
-		}
-		return redirect(302, '/demo/lucia');
-	 */
-	throw new Error("unimplemented stub");
-}
-
-/*
-
- */

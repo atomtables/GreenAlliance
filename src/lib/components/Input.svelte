@@ -18,7 +18,8 @@
         value: any,
         action?: Function,
         elements?: string[],
-        [key: string]: any;
+        [key: string]: any,
+        pattern?: string
     } = $props();
 
     let isFocused = $state(false);
@@ -38,6 +39,17 @@
         top: 0.75rem;
         font-size: 0.75rem;
         transform: none;
+    }
+
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+    }
+
+    input[type=number] {
+    -moz-appearance: textfield; /* For Firefox */
+    appearance: textfield; /* Standard property for future compatibility */
     }
 </style>
 <div class="relative py-2 input-container w-full {className}">
