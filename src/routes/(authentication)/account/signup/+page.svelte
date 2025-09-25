@@ -5,10 +5,6 @@
     import Input from "$lib/components/Input.svelte";
     import Dropdown from "$lib/components/Dropdown.svelte";
 
-    const districts = [
-        "FIRST California","FIRST Chesapeake","FIRST in Michigan","FIRST in Texas","FIRST Indiana Robotics","FIRST Mid-Atlantic","FIRST North Carolina","FIRST South Carolina","FIRST Wisconsin","NE FIRST","Peachtree","Pacific Northwest","Ontario","FIRST Israel"
-    ];
-
     let loading = $state(false);
     let { form } = $props();
 
@@ -32,12 +28,12 @@
     <div class="p-5 grid grid-cols-2 gap-5">
         <Input name="First Name" type="text" id="fname"/>
         <Input name="Last Name" type="text" id="lname"/>
-        <Input class="col-span-2" name="Username" type="text" id="username"/>
-        <Input class="col-span-2" name="Password" type="password" id="password"/>
-        <Input name="Email" type="email" id="email"/>
-        <Input name="Phone" type="tel" id="phone" pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}"/>
+        <Input class="col-span-2" name="Age" type="number" id="age"/>
+        <Input class="col-span-2" name="Email" type="email" id="email"/>
+        <Input class="col-span-2" name="Phone" type="tel" id="phone"/>
         <Input class="col-span-2" name="Address" type="text" id="address"/>
-        <Dropdown buttonText="District" items={districts} />
+        <Input name="Username" type="text" id="username"/>
+        <Input name="Password" type="password" id="password"/>
         <div class="text-sm dark:text-red-300 text-red-700 max-w-96">
             {form?.error}
         </div>
