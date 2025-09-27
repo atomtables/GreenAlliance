@@ -8,9 +8,10 @@
     import Input from "$lib/components/Input.svelte";
     import Table from "$lib/components/Table.svelte";
     import {formatDate} from "$lib/functions/code.js";
-    import User from "$lib/components/User.svelte";
-    import type {User as UserType} from "$lib/types/types";
     import SubteamComponent from "../list/SubteamComponent.svelte";
+    import jsPDF from "jspdf";
+    import autoTable from "jspdf-autotable";
+    import { bulletPoint, titleize, underlineText } from "$lib/functions/code";
 
     let {data} = $props();
     let members = $state(0);
@@ -39,6 +40,71 @@
             `<div class="text-5xl font-bold text-center pt-2">${createPromptData.joinCode}</div>`
         )
         createPromptData = {firstName: "", lastName: "", role: -1, joinCode: null}
+    }
+
+    type sort = "first" | "last" | "sub" | "pos"
+
+    async function generatePDF(n:Number) {
+
+            const response = await fetch("/config.json");
+            const teamInfo = await response.json();
+            const doc = new jsPDF("p", "mm", "a4");
+            let yPosition = 20;
+            const leftMargin = 15;
+
+            // Title
+            doc.setFontSize(18);
+            underlineText(doc, `Team ${teamInfo.teamNumber} - ${teamInfo.teamName}`, leftMargin, yPosition, 0.7, 0.7);
+            yPosition += 10;
+
+            if (n === 0) {
+                // Subtitle
+                doc.setFontSize(14);
+                doc.text("Date:", leftMargin, yPosition);
+                yPosition += 8;
+            }
+
+            // Body
+            const users = await data.users;
+            const positions = Object.keys(users);
+            const header = ["First Name", "Last Name", "Subteam", "Email"];
+            if (n === 0) header.splice(0,0,"Present");
+            const body = [];
+            Object.values(users).forEach((pos:Array<Object>, i) => {
+                if (yPosition > doc.internal.pageSize.getHeight() - 20) {
+                    doc.addPage();
+                    yPosition = 20;
+                }
+                doc.setFontSize(11);
+                interface User {
+                    firstName: String,
+                    lastName: String,
+                    subteam: String,
+                    email: String
+                }
+                pos.forEach((user:User) => {
+
+                    if (yPosition > doc.internal.pageSize.getHeight() - 20) {
+                        doc.addPage();
+                        yPosition = 20;
+                    }
+                    
+                    const userInfo = [titleize(user.firstName), titleize(user.lastName), user.subteam, user.email];
+                    if (n === 0) userInfo.splice(0,0,"q");
+                    body.push(userInfo);
+                })
+            })
+            const options = {
+                startY: yPosition,
+                head: [header],
+                body: body
+            }
+            if (n === 0) options["columnStyles"] = {
+                0: { font: "ZapfDingbats", halign: "center" }
+            }
+            autoTable(doc, options)
+
+        doc.output("dataurlnewwindow");
     }
 </script>
 
@@ -202,8 +268,11 @@
                     content: listmembers,
                     shelf: [
                         { name: `Add Member`, action: () => {alert("Add Member", "To add a member, you should create a join code with their name and their role on the team. This will allow them to set up their account themselves.")} },
+                        { name: "Print Attendance", action: () => {
+                            generatePDF(0);
+                        }},
                         { name: `Print Roster`, action: () => {
-                            
+                            generatePDF(1);
                         }}
                     ]
                 },
