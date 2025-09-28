@@ -37,3 +37,17 @@ export const underlineText = (doc, text, x, y, dist = 0.5, over = 0.5, width = 0
     doc.line(params.xInitial, params.y, params.xFinal, params.y);
 
 }
+
+export const sum = arr => {
+    let sum = 0
+    for (const n of arr) sum += n;
+    return sum;
+}
+
+export const max = arr => {
+    let maxVal = arr[0];
+    for (let i = 1; i < arr.length; i++) {
+        if (arr[i] > max) maxVal = arr[i]
+    }
+    return maxVal;
+}

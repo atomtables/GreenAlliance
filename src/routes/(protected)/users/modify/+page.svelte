@@ -7,7 +7,7 @@
     import Spinner from "$lib/components/Spinner.svelte";
     import Input from "$lib/components/Input.svelte";
     import Table from "$lib/components/Table.svelte";
-    import {formatDate} from "$lib/functions/code.js";
+    import {formatDate, max, sum} from "$lib/functions/code.js";
     import SubteamComponent from "../list/SubteamComponent.svelte";
     import jsPDF from "jspdf";
     import autoTable from "jspdf-autotable";
@@ -80,19 +80,11 @@
             // Title
             doc.setFontSize(18);
             underlineText(doc, `Team ${teamInfo.teamNumber} - ${teamInfo.teamName}`, leftMargin, yPosition, 0.7, 0.7);
-            yPosition += 10;
-
-            if (n === 0) {
-                // Subtitle
-                doc.setFontSize(14);
-                doc.text("Date:", leftMargin, yPosition);
-                yPosition += 8;
-            }
+            yPosition += 7;
 
             // Body
             const users = await data.users;
-            const header = ["First Name", "Last Name", "Position", "Subteam", "Email"];
-            if (n === 0) header.splice(0,0,"Present");
+            const header = ["First Name", "Last Name", "Role", "Subteam"];
             let accounts: User[];
             const body = [];
             doc.setFontSize(11);
@@ -106,23 +98,87 @@
             
             accounts = bubbleSort(accounts, s);
 
+            // Column Size Calculations
+            const columnMax = [0, 0, 0, 0];
+            let multiplier;
+            if (n !== 1) {
+                for (const user of accounts) {
+                    const first = doc.getTextWidth(`${user.firstName}`);
+                    const last = doc.getTextWidth(`${user.lastName}`);
+                    const role = doc.getTextWidth(`${positions[user.role]}`);
+                    const sub = doc.getTextWidth(`${user.subteam}`);
+                    if (first > columnMax[0]) columnMax[0] = first;
+                    if (last > columnMax[1]) columnMax[1] = last;
+                    if (role > columnMax[2]) columnMax[2] = role;
+                    if (sub > columnMax[3]) columnMax[3] = sub;
+                }
+            }
+
+            multiplier = (n === 0) ? max(columnMax) : 7;
+
+            if (n === 2) {
+                while (sum(columnMax) + leftMargin + ((header.length - 4) * multiplier) < 180) {
+                    header.push("");
+                }
+            }
+
+            if (n === 0) header.push("");
+
             accounts.forEach((user:User) => {
 
-                const userInfo = [titleize(user.firstName), titleize(user.lastName), positions[user.role], user.subteam, user.email];
-                if (n === 0) userInfo.splice(0,0,"q");
+                const userInfo = [titleize(user.firstName), titleize(user.lastName), positions[user.role], user.subteam];
                 body.push(userInfo);
             })
+
+            const color:[number,number,number] = [0,0,0];
             const options = {
                 startY: yPosition,
                 head: [header],
                 body: body,
+                styles: {
+                    lineWidth: 0.1,
+                    lineColor: color
+                },
+                columnStyles: {},
+                headStyles: {}
             }
-            if (n === 0) options["columnStyles"] = {
-                0: { font: "ZapfDingbats", halign: "center" }
+            if (n === 0) {
+                options.columnStyles[0] = { cellWidth: columnMax[0] + 2 }
+                options.columnStyles[1] = { cellWidth: columnMax[1] + 2 }
+                options.columnStyles[2] = { cellWidth: columnMax[2] + 2 }
+                options.columnStyles[3] = { cellWidth: columnMax[3] + 2 }
             }
+            if (n === 2) {
+                for (let i = 4; i < header.length; i++) {
+                    options.columnStyles[i] = { cellWidth: multiplier,  }
+                }
+            }
+
             autoTable(doc, options)
 
+        // doc.output("dataurlnewwindow");
         doc.save("roster.pdf");
+    }
+
+    const csvFile = async () => {
+        const users = await data.users;
+        const headers = ["FirstName", "LastName", "Role", "Subteam"].join(",");
+        const body = [];
+
+        Object.values(users).forEach((pos:User[]) => {
+            for (const user of pos) {
+                body.push(`${user.firstName},${user.lastName},${positions[user.role]},${user.subteam}`);
+            }
+        })
+        const csv = [headers, ...body].join("\n");
+        const encodedUri = encodeURI(`data:text/csv;charset=utf-8,${csv}`);
+
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', "roster.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 </script>
 
@@ -209,7 +265,6 @@
             Loading...
         </div>
     {:then users}
-        {@const val = console.log(users)}
         <Table source={Object.values(users).flat()}>
             {#snippet header()}
                 <th>Last Name</th>
@@ -219,7 +274,6 @@
                 <th>Email</th>
             {/snippet}
             {#snippet template({firstName, lastName, role, createdAt, email})}
-            {@const val = console.log(firstName)}
                 <th class="px-2">{lastName}</th>
                 <th class="px-2">{firstName}</th>
                 <th class="px-2">{
@@ -291,6 +345,12 @@
                         }},
                         { name: `Print Roster`, selections: ["Sort by First Name", "Sort by Last Name", "Sort by Subteam", "Sort by Role"], action: n => {
                             generatePDF(1, n);
+                        }},
+                        { name: `Print Squares`, selections: ["Sort by First Name", "Sort by Last Name", "Sort by Subteam", "Sort by Role"], action: n => {
+                            generatePDF(2, n);
+                        }},
+                        { name: `Download CSV`, action: () => {
+                            csvFile();
                         }}
                     ]
                 },
