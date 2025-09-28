@@ -18,7 +18,8 @@
 
         resolving = true;
         try {
-            await Promise.resolve(onclick?.(new CustomEvent(`onClickButton-${name}`)));
+            if (typeof onclick === 'function')
+                await Promise.resolve(onclick?.(new CustomEvent(`onClickButton-${name}`)));
         } finally {
             resolving = false;
         }

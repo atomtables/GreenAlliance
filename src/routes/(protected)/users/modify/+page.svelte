@@ -19,12 +19,22 @@
     const positions = ["Member", "Lead", "Captain", "Mentor", "Coach", "Admin"]
     let createJoinCodeOpen = $state(false);
     let createError = $state(null);
-    let createPromptData = $state({firstName: "", lastName: "", role: -1, joinCode: null});
+    let createPromptData = $state({firstName: "", lastName: "", role: -1, subteam: -1, joinCode: null});
 
     const createJoinCode = async () => {
+        if (!createPromptData.firstName || !createPromptData.lastName || createPromptData.role === -1 || data.subteams[createPromptData.subteam]?.name === undefined) {
+            alert("Create a join code", "Please fill out all fields.")
+            return;
+        }
+
         let req = await fetch("/api/users/joincodes", {
             method: "PUT",
-            body: JSON.stringify(createPromptData),
+            body: JSON.stringify({
+                firstName: createPromptData.firstName,
+                lastName: createPromptData.lastName,
+                role: createPromptData.role,
+                subteam: data.subteams[createPromptData.subteam].name,
+            }),
             headers: {'Content-Type': 'application/json'}
         })
         let res = await req.json()
@@ -40,7 +50,7 @@
             `When ${createPromptData.firstName} creates an account, ask them to use this code on the sign up screen.`,
             `<div class="text-5xl font-bold text-center pt-2">${createPromptData.joinCode}</div>`
         )
-        createPromptData = {firstName: "", lastName: "", role: -1, joinCode: null}
+        createPromptData = {firstName: "", lastName: "", role: -1, subteam: -1, joinCode: null}
     }
 
     interface User {
@@ -292,7 +302,7 @@
 {/snippet}
 {#snippet listsubteams()}
     <div>
-        {#await data.subteams}
+        {#await data.subteamsAvailable}
             <Spinner />
         {:then subteams}
             <div class="space-y-2">
@@ -311,15 +321,17 @@
         description="Generate a code to be used for a user to create their account."
         actions={[
             { name: "Cancel", action: () => createJoinCodeOpen = false },
-            { name: "Create", action: createJoinCode, primary: true }
+            { name: "Create", action: () => createJoinCode(), primary: true }
         ]}>
     <div class="flex flex-row space-x-2">
         <Input name="First Name" id="firstname" bind:value={createPromptData.firstName}/>
         <Input name="Last Name" id="lastname" bind:value={createPromptData.lastName}/>
     </div>
-    <div class="flex flex-row">
+    <div class="flex flex-row pt-2 gap-2">
         <Input name="Role" id="role" type="dropdown" elements={["Member", "Team Lead", "Captain", "Mentor", "Coach"]}
                bind:value={createPromptData.role}/>
+        <Input name="Subteam" id="subteam" type="dropdown" elements={[...data.subteams.map(v => v.name)]}
+               bind:value={createPromptData.subteam}/>
     </div>
     {#if createError}
         <div class="text-red-400">An error occured while creating a join code: <b>{createError}</b></div>

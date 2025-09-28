@@ -11,9 +11,9 @@ export const PUT = async ({request, locals}) => {
         error: "Access denied."
     })
     try {
-        let {firstName, lastName, role} = await request.json();
-        console.log(firstName, lastName, role);
-        if (!firstName || !lastName || typeof role == "undefined") return error(400, {
+        let {firstName, lastName, role, subteam} = await request.json();
+        console.log(firstName, lastName, role, subteam);
+        if (!firstName || !lastName || typeof role == "undefined" || typeof subteam == "undefined") return error(400, {
             success: false,
             error: "Please fill out all fields."
         })
@@ -21,7 +21,7 @@ export const PUT = async ({request, locals}) => {
 
         while (true) {
             try {
-                await db.insert(joincodes).values({firstName, lastName, role, joinCode});
+                await db.insert(joincodes).values({firstName, lastName, role, subteam, joinCode});
                 break;
             } catch (e) {
                 joinCode = createCode(6);

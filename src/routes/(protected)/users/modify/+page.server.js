@@ -6,7 +6,7 @@ import {isNotNull, isNull, ne} from "drizzle-orm";
 
 export const load = async ({depends, locals}) => {
     depends("user:joincodes")
-    if (!locals.user.permissions.includes(Permission.users_modify)) return redirect(302, "/home");
+    if (!locals.user.permissions.includes(Permission.users_modify)) return redirect(302, "/home?nopermission=true");
     console.log(await db.select().from(joincodes));
     // load all join codes
     let userselect = db.select({
@@ -51,7 +51,7 @@ export const load = async ({depends, locals}) => {
             }
             return result;
         }),
-        subteams: db.select().from(subteams).then(async subteams =>
+        subteamsAvailable: db.select().from(subteams).then(async subteams =>
             await Promise.all(subteams.map(({ name: subteam }) =>
                 userselect
                     .then(users => {

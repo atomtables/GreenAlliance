@@ -86,7 +86,7 @@
 {/if}
 <table class="bg-green-900 w-full text-left">
     <thead>
-    <tr class="border-b-2 border-gray-400 text-gray-200 *:px-2">
+    <tr class="border-b-2 border-gray-400 text-gray-200 *:p-2">
         {#if checkable}
             <th class="w-8">
                 <Input type="checkbox" name="" bind:value={all} action={() => toggleAll()}/>
@@ -98,7 +98,7 @@
     <tbody>
     {#if source.length > 0}
         {#each source as data, i}
-            <tr class="text-white *:px-2 hover:bg-neutral-500/40 transition-all">
+            <tr class="text-white *:p-2 hover:bg-neutral-500/40 transition-all">
                 {#if checkable}
                     <th class="w-8 px-2">
                         <Input name="" type="checkbox" bind:value={selected[i]} action={() => toggleOne(i)}/>

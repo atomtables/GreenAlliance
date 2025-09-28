@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "7c0e2d16-bd20-42b3-baaa-eea47d405ee8",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "9164e7f1-4fd5-44f4-854f-5e0c8d1d9845",
+  "prevId": "7c0e2d16-bd20-42b3-baaa-eea47d405ee8",
   "tables": {
     "joincodes": {
       "name": "joincodes",
@@ -293,7 +293,7 @@
           "name": "age",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         },
         "username": {
@@ -321,21 +321,21 @@
           "name": "first_name",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         },
         "last_name": {
           "name": "last_name",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         },
         "email": {
           "name": "email",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         },
         "phone": {
@@ -363,14 +363,14 @@
           "name": "role",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         },
         "permissions": {
           "name": "permissions",
           "type": "json",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         },
         "subteam": {

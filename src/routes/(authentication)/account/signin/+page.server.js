@@ -14,7 +14,7 @@ export const actions = {
             console.log(e);
             return fail(400, {"error": `${e.error?.message}`});
         }
-
+        
         return redirect(302, '/');
     }
 }

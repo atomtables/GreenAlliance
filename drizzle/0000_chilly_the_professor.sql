@@ -1,10 +1,12 @@
 CREATE TABLE `joincodes` (
 	`joinCode` text PRIMARY KEY NOT NULL,
-	`role` integer,
+	`role` integer NOT NULL,
+	`subteam` text DEFAULT 'All' NOT NULL,
 	`firstName` text,
 	`lastName` text,
 	`created_at` integer NOT NULL,
-	`used_at` integer
+	`used_at` integer,
+	FOREIGN KEY (`subteam`) REFERENCES `subteams`(`name`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
 CREATE TABLE `meeting_attendees` (

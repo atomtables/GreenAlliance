@@ -1,15 +1,38 @@
 <script>
-    import '../app.css';
-    import {page} from '$app/state';
+    import "../app.css";
+    import { page } from "$app/state";
     import HeaderTab from "$lib/components/HeaderTab.svelte";
-  import { titleize } from '$lib/functions/code';
+    import { titleize } from '$lib/functions/code';
+    import { onMount } from "svelte";
+    import { alert } from "$lib/components/Dialog.svelte";
 
-    let {data, children} = $props();
-    let {user, session} = data;
+    let { data, children } = $props();
+    let { user, session } = data || {};
 
     let url = $derived(page.url.pathname);
-    let showDropdown = $state(false);
+    let isScrolled = $state(false);
 
+    onMount(() => {
+        const handleScroll = () => {
+            isScrolled = window.scrollY > 0;
+        };
+
+        window.addEventListener("scroll", handleScroll);
+
+        return () => {
+            window.removeEventListener("scroll", handleScroll);
+        };
+    });
+
+    $effect(() => {
+        if (page.url.searchParams){
+        const urlParams = new URLSearchParams(window.location.search);
+        const noPermission = urlParams.get("nopermission");
+        console.log(noPermission);
+        if (noPermission) {
+            alert("You do not have permission to access this page.").then(() => null);
+        }}
+    });
 </script>
 
 {#if user == null}
@@ -34,8 +57,14 @@
     </style>
 {/if}
 
-<header class="flex flex-col">
-    <div class="flex items-center justify-center relative p-5 bg-green-400 dark:bg-green-700">
+<header
+    class="flex flex-col fixed w-full top-0 z-50 transition-shadow duration-200 {isScrolled
+        ? 'shadow-2xl'
+        : ''}"
+>
+    <div
+        class="flex items-center justify-center relative p-5 bg-green-400 dark:bg-green-700"
+    >
         <div class="text-center w-full font-bold text-xl">
             THE GREEN ALLIANCE
         </div>
@@ -47,23 +76,43 @@
             {/if}
         </div>
     </div>
-    <div class="bg-green-300 dark:bg-green-800 flex flex-row flex-nowrap overflow-x-scroll justify-center">
+    <div
+        class="bg-green-300 dark:bg-green-800 flex flex-row flex-nowrap overflow-x-scroll justify-center"
+    >
         <HeaderTab name="Home" href="/" />
-        <HeaderTab name="Landing" href="/" custom class="{url === '/' && 'current-tab auth block'} hidden" />
+        <HeaderTab
+            name="Landing"
+            href="/"
+            custom
+            class="{url === '/' && 'current-tab auth block'} hidden"
+        />
         <HeaderTab name="Home" href="/home" showOnAuth />
         <HeaderTab name="About" href="/about" />
         <HeaderTab name="Account" href="/account/signin" activeUrl="/account" />
         <HeaderTab name="Account" href="/account" showOnAuth />
-        <HeaderTab name="Users" activeUrl="/users" showOnAuth isDropdown elements={[
-            {name: "List Members/Groups", url: "/users/list"},
-            {name: "Modify Members/Groups", url: "/users/modify"}
-        ]} />
-        <HeaderTab name="Meetings" activeUrl="/meetings" showOnAuth isDropdown elements={[
-            {name: "Calendar", url: "/meetings/calendar"},
-            {name: "Modify Members/Groups", url: "/users/modify"}
-        ]} />
+        <HeaderTab
+            name="Users"
+            activeUrl="/users"
+            showOnAuth
+            isDropdown
+            elements={[
+                { name: "List Members/Groups", url: "/users/list" },
+                { name: "Modify Members/Groups", url: "/users/modify" },
+            ]}
+        />
+        <HeaderTab
+            name="Meetings"
+            activeUrl="/meetings"
+            showOnAuth
+            isDropdown
+            elements={[
+                { name: "Calendar", url: "/meetings/calendar" },
+                { name: "Modify Members/Groups", url: "/users/modify" },
+            ]}
+        />
     </div>
 </header>
+<div class="h-[126px]"></div>
 <div class="w-full h-[calc(100vh-126px)]">
     {@render children()}
 </div>
