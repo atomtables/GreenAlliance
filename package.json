@@ -33,12 +33,13 @@
 		"@node-rs/argon2": "^2.0.2",
 		"@oslojs/crypto": "^1.0.1",
 		"@oslojs/encoding": "^1.1.0",
+		"@sveltejs/adapter-node": "^5.3.2",
 		"better-sqlite3": "^11.8.0",
 		"dotenv": "^16.5.0",
 		"drizzle-orm": "^0.40.0",
 		"jspdf": "^3.0.3",
 		"jspdf-autotable": "^5.0.2"
-	}, 
+	},
 	"resolutions": {
 		"drizzle-orm": "^0.40.0"
 	}
