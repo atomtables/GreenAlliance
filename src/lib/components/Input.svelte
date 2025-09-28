@@ -18,8 +18,7 @@
         value: any,
         action?: Function,
         elements?: string[],
-        [key: string]: any,
-        pattern?: string
+        [key: string]: any
     } = $props();
 
     let isFocused = $state(false);
@@ -52,10 +51,11 @@
     appearance: textfield; /* Standard property for future compatibility */
     }
 </style>
-<div class="relative py-2 input-container w-full {className}">
+<div class="relative py-2 -my-2 input-container w-full {className}">
     <label class="{type === 'date' && '-ml-0'} transition-all floating-label text-gray-400 {isFocused && 'text-green-400'} {hasText && 'up'}"
            for={id}>
         {name}
+        {@html attributes.required ? '<span class="text-red-300">*</span>' : ''}
     </label>
     {#if type === "dropdown"}
         <select

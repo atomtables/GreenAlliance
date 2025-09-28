@@ -1,9 +1,10 @@
-import {eq} from 'drizzle-orm';
+import {eq, type InferInsertModel} from 'drizzle-orm';
 import {sha256} from '@oslojs/crypto/sha2';
 import {encodeBase64url, encodeHexLowerCase} from '@oslojs/encoding';
 import {db} from '$lib/server/db';
 import * as table from '$lib/server/db/schema.js';
-import {verify} from "@node-rs/argon2";
+import {hash, verify} from "@node-rs/argon2";
+import { isRedirect, redirect } from '@sveltejs/kit';
 
 const DAY_IN_MS = 1000 * 60 * 60 * 24;
 
@@ -107,6 +108,8 @@ function validatePassword(password) {
 }
 
 class ValidationError extends Error {
+	public error: string;
+
 	constructor(message) {
 		super("A validation error occurred");
 		this.name = 'ValidationError';
@@ -159,7 +162,7 @@ export let validateLogin = async (formData) => {
 }
 
 const normalizeData = data => {
-    return data.toString().toLowerCase().trim();
+    return data?.toString().toLowerCase().trim();
 }
 
 const validateUnique = async (type, val) => {
@@ -176,80 +179,90 @@ const validateName = name => {
 }
 
 const validatePhone = phone => {
-	return typeof phone === "string" &&
-		/^[0-9]{10}$/.test(phone);
+	return true //typeof phone === "string" &&
+		///^[0-9]{10}$/.test(phone);
 }
 
 const validateAge = age => {
-	return typeof age === "string" &&
-		age > 0 && age < 100 &&
-		/^[0-9]+$/.test(age);
+	// age can't be null or zero
+	return age && !isNaN(parseInt(age));
 }
 
 export const validateRegister = async (formData) => {
 	const username = normalizeData(formData.get("username"));
 	const password = formData.get("password")?.toString();
-	const phone = normalizeData(formData.get("phone"));
-	const address = normalizeData(formData.get("address"));
+	const confirmation = formData.get("confirmation")?.toString();
+	const phone = normalizeData(formData.get("pnumber"));
 	const age = normalizeData(formData.get("age"));
 	const firstName = normalizeData(formData.get("fname"));
 	const lastName = normalizeData(formData.get("lname"));
 	const email = normalizeData(formData.get("email"));
+	const joinCode = normalizeData(formData.get("jcode")).toUpperCase();
 
+	// address info
+	const houseNumber = parseInt(formData.get("addnum"))
+	const addressLine1 = parseInt(formData.get("addline1"))
+	const addressLine2 = parseInt(formData.get("addline2"))
+	const city = parseInt(formData.get("addcity"))
+	const state = parseInt(formData.get("addstate"))
+	const zip = parseInt(formData.get("addzip"))
+
+	if (joinCode === null || joinCode === "" || joinCode === undefined) {
+		redirect(303, "/account/signup")
+	}
 	if (!validateName(firstName) || !validateName(lastName)) {
 		throw new Error("NAME_WRONG");
 	}
-
 	if (!validateAge(age)) {
 		throw new Error("AGE_WRONG");
 	}
-
+	// TODO: doesn't actually ever trigger, but some people use +1 or +61 or have different formatting, so get a phone number formatter
 	if (!validatePhone(phone)) {
 		throw new Error("PHONE_WRONG");
 	}
-
 	if (!validateUsername(username)) {
 		throw new Error("USERNAME_WRONG");
 	}
-	if (!validatePassword(password)) {
+	if (password !== confirmation || !validatePassword(password)) {
 		throw new Error("PASSWORD_WRONG");
 	}
-
-	if (await validateUnique("email", email)) {
-		throw new Error("EMAIL_EXISTS");
-	}
-
-	if (await validateUnique("phone", phone)) {
-		throw new Error("PHONE_EXISTS");
-	}
-
-	if (await validateUnique("username", username)) {
-		throw new Error("USERNAME_EXISTS");
-	}
-
 	const passwordHash = await hash(password, {
 		// recommended minimum parameters
-		memoryCostr: 19456,
+		memoryCost: 19456,
 		timeCost: 2,
 		outputLen: 32,
 		parallelism: 1,
 	});
-
 	const id = crypto.randomUUID();
+	
+	try {
+		let [joinCodeData] = await db.select().from(table.joincodes).where(
+			eq(table.joincodes.joinCode, joinCode)
+		).limit(1);
+		if (!joinCodeData) {
+			console.error(joinCodeData);
+			return redirect(303, "/account/signup")
+		}
 
-	// this is the admin
-	await db.insert(schema.users).values({
-		id: id,
-		username,
-		passwordHash,
-		phone,
-		address,
-		age: 15,
-		firstName,
-		lastName,
-		email,
-	});
-
+		await db.insert(table.users).values({
+			id: id,
+			username,
+			passwordHash,
+			phone,
+			address: null, // TODO: add address support
+			age: parseInt(age),
+			firstName,
+			lastName,
+			email,
+			subteam: joinCodeData.subteam,
+			role: joinCodeData.role,
+			permissions: [0, 31]
+		} as InferInsertModel<typeof table.users>);
+	} catch (e) {
+		if (isRedirect(e)) throw e;
+		console.error("assume exists:", e)
+		throw new Error("EXISTS")
+	}
 	return id;
 }
 

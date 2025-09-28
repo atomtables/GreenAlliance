@@ -5,7 +5,7 @@ import {subteams, users} from "$lib/server/db/schema.js";
 import {ne} from "drizzle-orm";
 
 export const load = ({locals}) => {
-    if (!locals.user.permissions.includes(Permission.users)) return redirect(302, "/home")
+    if (!locals.user.permissions.includes(Permission.users)) return redirect(302, "/home?nopermission=true")
 
     let userselect = db.select({
         firstName: users.firstName,

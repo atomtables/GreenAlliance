@@ -5,7 +5,7 @@ import { Permission } from "$lib/types/types.js";
 import { redirect } from "@sveltejs/kit";
 
 export const load = async ({locals, depends}) => {
-    if (!locals.user.permissions.includes(Permission.calendar)) return redirect(302, "/home")
+    if (!locals.user.permissions.includes(Permission.calendar)) return redirect(302, "/home?nopermission=true")
     depends("meetings:events")
 
     const now = new Date();

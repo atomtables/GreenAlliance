@@ -20,20 +20,20 @@ export const json = <T>(name: string) =>
  */
 export const users = sqliteTable('users', {
     id: text('id').primaryKey().$default(() => crypto.randomUUID()),
-    age: integer('age'),
+    age: integer('age').notNull(),
     username: text('username').notNull().unique(),
     passwordHash: text('password_hash').notNull(),                    // @ts-ignore
     createdAt: integer('created_at', {mode: 'timestamp'}).$default(() => new Date()),
 
-    firstName: text('first_name'),
-    lastName: text('last_name'),
-    email: text('email'),
+    firstName: text('first_name').notNull(),
+    lastName: text('last_name').notNull(),
+    email: text('email').notNull(),
     phone: blob('phone').$type<PhoneNumber>(),
     address: blob('address').$type<Address>(),
 
     avatar: blob('avatar'),
-    role: integer('role').$type<Role>(),
-    permissions: json('permissions').$type<[Permission]>(),
+    role: integer('role').$type<Role>().notNull(),
+    permissions: json('permissions').$type<Permission[]>().notNull(),
     subteam: text('subteam').notNull().references(() => subteams.name).default("All"),
 }, (table) => [
     uniqueIndex('emailUniqueIndex').on(table.email),
@@ -47,7 +47,8 @@ export const subteams = sqliteTable('subteams', {
 // first name and last name must be accurate in order to properly allot a join code
 export const joincodes = sqliteTable('joincodes', {
     joinCode: text("joinCode").primaryKey(),
-    role: integer("role").$type<Role>(),
+    role: integer("role").notNull().$type<Role>(),
+    subteam: text("subteam").notNull().references(() => subteams.name).default("All"),
     firstName: text("firstName"),
     lastName: text("lastName"),
     createdAt: integer('created_at', {mode: 'timestamp'}).$default(() => new Date()).notNull(),

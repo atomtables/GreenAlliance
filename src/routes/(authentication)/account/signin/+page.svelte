@@ -6,21 +6,10 @@
 
     let loading = $state(false);
     let { form } = $props();
-
-    let handleEnhance = $state();
-    onMount(() => {
-        handleEnhance = enhance((opts) => {
-            loading = true;
-
-            return async ({ result, update }) => {
-                loading = false;
-                update(result);
-            };
-        });
-    })
 </script>
 
-<form method="POST" class="mx-auto mt-24 w-max dark:bg-green-900 bg-green-200" use:handleEnhance>
+<div class="pt-24">
+    <form method="POST" class="mx-auto w-max dark:bg-green-900 bg-green-200">
     <div class="p-5 text-4xl font-bold dark:bg-green-800 bg-green-300">
         Sign in
     </div>
@@ -32,7 +21,7 @@
         </div>
     </div>
     <div class="p-5 dark:bg-green-800 bg-green-300">
-        <Button type="submit" disabled={loading}>
+        <Button type="submit" disabled={loading} onclick={() => loading = true}>
             {#if loading}Loading...{/if}
             {#if !loading}Sign in{/if}
         </Button>
@@ -46,3 +35,4 @@
         </div>
     </div>
 </form>
+</div>
