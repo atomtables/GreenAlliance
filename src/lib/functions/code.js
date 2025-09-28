@@ -37,17 +37,3 @@ export const underlineText = (doc, text, x, y, dist = 0.5, over = 0.5, width = 0
     doc.line(params.xInitial, params.y, params.xFinal, params.y);
 
 }
-
-export const bulletPoint = (doc, text, x, y, options, scale = 1.5, over = 0.5) => {
-
-    const fontSize = doc.getFontSize();
-
-    doc.setFontSize(fontSize * scale);
-    doc.text("•", x, y+0.45);
-
-    x += over * fontSize;
-
-    doc.setFontSize(fontSize);
-    doc.text(text, x, y, { ...options });
-
-}

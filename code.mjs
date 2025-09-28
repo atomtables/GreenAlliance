@@ -36,8 +36,8 @@ await database.insert(schema.users).values({
     permissions: [0, 30, 31],
     subteam: "All",
     age: 15,
-    firstName: "Adithiya",
-    lastName: "Venkatakrishnan",
+    firstName: "adithiya",
+    lastName: "venkatakrishnan",
     email: "adithiya.venkatakrishnan@atomtables.dev",
 });
 

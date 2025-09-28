@@ -11,11 +11,12 @@
     import SubteamComponent from "../list/SubteamComponent.svelte";
     import jsPDF from "jspdf";
     import autoTable from "jspdf-autotable";
-    import { bulletPoint, titleize, underlineText } from "$lib/functions/code";
+    import { titleize, underlineText } from "$lib/functions/code";
 
     let {data} = $props();
     let members = $state(0);
 
+    const positions = ["Member", "Lead", "Captain", "Mentor", "Coach", "Admin"]
     let createJoinCodeOpen = $state(false);
     let createError = $state(null);
     let createPromptData = $state({firstName: "", lastName: "", role: -1, joinCode: null});
@@ -42,9 +43,33 @@
         createPromptData = {firstName: "", lastName: "", role: -1, joinCode: null}
     }
 
-    type sort = "first" | "last" | "sub" | "pos"
+    interface User {
+        firstName: String,
+        lastName: String,
+        subteam: String,
+        email: String,
+        role: number
+    }
 
-    async function generatePDF(n:Number) {
+    const bubbleSort = (arr:User[], s) => {
+        const sorts = ["firstName", "lastName", "subteam", "role"];
+        s = sorts[s]
+        if (arr.length === 1 || s === "role") return arr;
+        for (let i = 0; i < arr.length; i++) {
+            let minIndex = i;
+            for (let j = i + 1; j < arr.length; j++) {
+                if (arr[j][s].toLowerCase() < arr[minIndex][s].toLowerCase()) {
+                    minIndex = j;
+                }
+            }
+            const temp = arr[i];
+            arr[i] = arr[minIndex];
+            arr[minIndex] = temp;
+        }
+        return arr;
+    }
+
+    async function generatePDF(n:Number, s) {
 
             const response = await fetch("/config.json");
             const teamInfo = await response.json();
@@ -66,45 +91,38 @@
 
             // Body
             const users = await data.users;
-            const positions = Object.keys(users);
-            const header = ["First Name", "Last Name", "Subteam", "Email"];
+            const header = ["First Name", "Last Name", "Position", "Subteam", "Email"];
             if (n === 0) header.splice(0,0,"Present");
+            let accounts: User[];
             const body = [];
-            Object.values(users).forEach((pos:Array<Object>, i) => {
-                if (yPosition > doc.internal.pageSize.getHeight() - 20) {
-                    doc.addPage();
-                    yPosition = 20;
+            doc.setFontSize(11);
+            Object.values(users).forEach((pos:User[]) => {
+                if (!accounts) {
+                    accounts = pos;
+                } else {
+                    accounts = accounts.concat(pos);
                 }
-                doc.setFontSize(11);
-                interface User {
-                    firstName: String,
-                    lastName: String,
-                    subteam: String,
-                    email: String
-                }
-                pos.forEach((user:User) => {
+            })
+            
+            accounts = bubbleSort(accounts, s);
 
-                    if (yPosition > doc.internal.pageSize.getHeight() - 20) {
-                        doc.addPage();
-                        yPosition = 20;
-                    }
-                    
-                    const userInfo = [titleize(user.firstName), titleize(user.lastName), user.subteam, user.email];
-                    if (n === 0) userInfo.splice(0,0,"q");
-                    body.push(userInfo);
-                })
+            accounts.forEach((user:User) => {
+
+                const userInfo = [titleize(user.firstName), titleize(user.lastName), positions[user.role], user.subteam, user.email];
+                if (n === 0) userInfo.splice(0,0,"q");
+                body.push(userInfo);
             })
             const options = {
                 startY: yPosition,
                 head: [header],
-                body: body
+                body: body,
             }
             if (n === 0) options["columnStyles"] = {
                 0: { font: "ZapfDingbats", halign: "center" }
             }
             autoTable(doc, options)
 
-        doc.output("dataurlnewwindow");
+        doc.save("roster.pdf");
     }
 </script>
 
@@ -268,11 +286,11 @@
                     content: listmembers,
                     shelf: [
                         { name: `Add Member`, action: () => {alert("Add Member", "To add a member, you should create a join code with their name and their role on the team. This will allow them to set up their account themselves.")} },
-                        { name: "Print Attendance", action: () => {
-                            generatePDF(0);
+                        { name: "Print Attendance", selections: ["Sort by First Name", "Sort by Last Name", "Sort by Subteam", "Sort by Role"], action: n => {
+                            generatePDF(0, n);
                         }},
-                        { name: `Print Roster`, action: () => {
-                            generatePDF(1);
+                        { name: `Print Roster`, selections: ["Sort by First Name", "Sort by Last Name", "Sort by Subteam", "Sort by Role"], action: n => {
+                            generatePDF(1, n);
                         }}
                     ]
                 },
