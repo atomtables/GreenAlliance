@@ -1,5 +1,12 @@
-# FRC Green Alliance
-
+# The Green Alliance
+app designed to make the adminstration and organisation of FRC teams just that much simpler. currently in canary dev coal mine, has like 2 features implemented. planned beta 2027 season.
+## run?
+`npm install`
+`cp .env.example .env`
+`npm run db:migrate`
+`npm run db:seed`
+`npm run build`
+`node build/index.js -r dotenv/config`
 ## note:
 - generate and migrate database after finishing the TODO
 - rn the TODO is to create permissions that allow the user to access whatever they should be
