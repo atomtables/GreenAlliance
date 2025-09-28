@@ -38,16 +38,16 @@ export const underlineText = (doc, text, x, y, dist = 0.5, over = 0.5, width = 0
 
 }
 
-export const bulletPoint = (doc, text, x, y, options, scale = 1.5, over = 0.5) => {
+export const sum = arr => {
+    let sum = 0
+    for (const n of arr) sum += n;
+    return sum;
+}
 
-    const fontSize = doc.getFontSize();
-
-    doc.setFontSize(fontSize * scale);
-    doc.text("•", x, y+0.45);
-
-    x += over * fontSize;
-
-    doc.setFontSize(fontSize);
-    doc.text(text, x, y, { ...options });
-
+export const max = arr => {
+    let maxVal = arr[0];
+    for (let i = 1; i < arr.length; i++) {
+        if (arr[i] > max) maxVal = arr[i]
+    }
+    return maxVal;
 }

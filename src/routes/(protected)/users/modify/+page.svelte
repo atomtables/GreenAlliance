@@ -7,14 +7,16 @@
     import Spinner from "$lib/components/Spinner.svelte";
     import Input from "$lib/components/Input.svelte";
     import Table from "$lib/components/Table.svelte";
-    import {formatDate} from "$lib/functions/code.js";
-    import User from "$lib/components/User.svelte";
-    import type {User as UserType} from "$lib/types/types";
+    import {formatDate, max, sum} from "$lib/functions/code.js";
     import SubteamComponent from "../list/SubteamComponent.svelte";
+    import jsPDF from "jspdf";
+    import autoTable from "jspdf-autotable";
+    import { titleize, underlineText } from "$lib/functions/code";
 
     let {data} = $props();
     let members = $state(0);
 
+    const positions = ["Member", "Lead", "Captain", "Mentor", "Coach", "Admin"]
     let createJoinCodeOpen = $state(false);
     let createError = $state(null);
     let createPromptData = $state({firstName: "", lastName: "", role: -1, subteam: -1, joinCode: null});
@@ -49,6 +51,144 @@
             `<div class="text-5xl font-bold text-center pt-2">${createPromptData.joinCode}</div>`
         )
         createPromptData = {firstName: "", lastName: "", role: -1, subteam: -1, joinCode: null}
+    }
+
+    interface User {
+        firstName: String,
+        lastName: String,
+        subteam: String,
+        email: String,
+        role: number
+    }
+
+    const bubbleSort = (arr:User[], s) => {
+        const sorts = ["firstName", "lastName", "subteam", "role"];
+        s = sorts[s]
+        if (arr.length === 1 || s === "role") return arr;
+        for (let i = 0; i < arr.length; i++) {
+            let minIndex = i;
+            for (let j = i + 1; j < arr.length; j++) {
+                if (arr[j][s].toLowerCase() < arr[minIndex][s].toLowerCase()) {
+                    minIndex = j;
+                }
+            }
+            const temp = arr[i];
+            arr[i] = arr[minIndex];
+            arr[minIndex] = temp;
+        }
+        return arr;
+    }
+
+    async function generatePDF(n:Number, s) {
+
+            const response = await fetch("/config.json");
+            const teamInfo = await response.json();
+            const doc = new jsPDF("p", "mm", "a4");
+            let yPosition = 20;
+            const leftMargin = 15;
+
+            // Title
+            doc.setFontSize(18);
+            underlineText(doc, `Team ${teamInfo.teamNumber} - ${teamInfo.teamName}`, leftMargin, yPosition, 0.7, 0.7);
+            yPosition += 7;
+
+            // Body
+            const users = await data.users;
+            const header = ["First Name", "Last Name", "Role", "Subteam"];
+            let accounts: User[];
+            const body = [];
+            doc.setFontSize(11);
+            Object.values(users).forEach((pos:User[]) => {
+                if (!accounts) {
+                    accounts = pos;
+                } else {
+                    accounts = accounts.concat(pos);
+                }
+            })
+            
+            accounts = bubbleSort(accounts, s);
+
+            // Column Size Calculations
+            const columnMax = [0, 0, 0, 0];
+            let multiplier;
+            if (n !== 1) {
+                for (const user of accounts) {
+                    const first = doc.getTextWidth(`${user.firstName}`);
+                    const last = doc.getTextWidth(`${user.lastName}`);
+                    const role = doc.getTextWidth(`${positions[user.role]}`);
+                    const sub = doc.getTextWidth(`${user.subteam}`);
+                    if (first > columnMax[0]) columnMax[0] = first;
+                    if (last > columnMax[1]) columnMax[1] = last;
+                    if (role > columnMax[2]) columnMax[2] = role;
+                    if (sub > columnMax[3]) columnMax[3] = sub;
+                }
+            }
+
+            multiplier = (n === 0) ? max(columnMax) : 7;
+
+            if (n === 2) {
+                while (sum(columnMax) + leftMargin + ((header.length - 4) * multiplier) < 180) {
+                    header.push("");
+                }
+            }
+
+            if (n === 0) header.push("");
+
+            accounts.forEach((user:User) => {
+
+                const userInfo = [titleize(user.firstName), titleize(user.lastName), positions[user.role], user.subteam];
+                body.push(userInfo);
+            })
+
+            const color:[number,number,number] = [0,0,0];
+            const options = {
+                startY: yPosition,
+                head: [header],
+                body: body,
+                styles: {
+                    lineWidth: 0.1,
+                    lineColor: color
+                },
+                columnStyles: {},
+                headStyles: {}
+            }
+            if (n === 0) {
+                options.columnStyles[0] = { cellWidth: columnMax[0] + 2 }
+                options.columnStyles[1] = { cellWidth: columnMax[1] + 2 }
+                options.columnStyles[2] = { cellWidth: columnMax[2] + 2 }
+                options.columnStyles[3] = { cellWidth: columnMax[3] + 2 }
+            }
+            if (n === 2) {
+                for (let i = 4; i < header.length; i++) {
+                    options.columnStyles[i] = { cellWidth: multiplier,  }
+                }
+            }
+
+            autoTable(doc, options)
+
+        // doc.output("dataurlnewwindow");
+        doc.save("roster.pdf");
+    }
+
+    const csvFile = async () => {
+        const users = await data.users;
+        const headers = ["FirstName", "LastName", "Role", "Subteam"].join(",");
+        const body = [];
+
+        Object.values(users).forEach((pos:User[]) => {
+            for (const user of pos) {
+                body.push(`${user.firstName},${user.lastName},${positions[user.role]},${user.subteam}`);
+            }
+        })
+        const csv = [headers, ...body].join("\n");
+        const encodedUri = encodeURI(`data:text/csv;charset=utf-8,${csv}`);
+
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', "roster.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 </script>
 
@@ -135,7 +275,6 @@
             Loading...
         </div>
     {:then users}
-        {@const val = console.log(users)}
         <Table source={Object.values(users).flat()}>
             {#snippet header()}
                 <th>Last Name</th>
@@ -145,7 +284,6 @@
                 <th>Email</th>
             {/snippet}
             {#snippet template({firstName, lastName, role, createdAt, email})}
-            {@const val = console.log(firstName)}
                 <th class="px-2">{lastName}</th>
                 <th class="px-2">{firstName}</th>
                 <th class="px-2">{
@@ -214,8 +352,17 @@
                     content: listmembers,
                     shelf: [
                         { name: `Add Member`, action: () => {alert("Add Member", "To add a member, you should create a join code with their name and their role on the team. This will allow them to set up their account themselves.")} },
-                        { name: `Print Roster`, action: () => {
-                            
+                        { name: "Print Attendance", selections: ["Sort by First Name", "Sort by Last Name", "Sort by Subteam", "Sort by Role"], action: n => {
+                            generatePDF(0, n);
+                        }},
+                        { name: `Print Roster`, selections: ["Sort by First Name", "Sort by Last Name", "Sort by Subteam", "Sort by Role"], action: n => {
+                            generatePDF(1, n);
+                        }},
+                        { name: `Print Squares`, selections: ["Sort by First Name", "Sort by Last Name", "Sort by Subteam", "Sort by Role"], action: n => {
+                            generatePDF(2, n);
+                        }},
+                        { name: `Download CSV`, action: () => {
+                            csvFile();
                         }}
                     ]
                 },

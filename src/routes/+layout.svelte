@@ -2,6 +2,7 @@
     import "../app.css";
     import { page } from "$app/state";
     import HeaderTab from "$lib/components/HeaderTab.svelte";
+    import { titleize } from '$lib/functions/code';
     import { onMount } from "svelte";
     import { alert } from "$lib/components/Dialog.svelte";
 
@@ -69,7 +70,7 @@
         </div>
         <div class="absolute right-5 bottom-5">
             {#if user != null}
-                {user.firstName} {user.lastName}
+                {titleize(`${user.firstName} ${user.lastName}`)}
             {:else}
                 Not logged in
             {/if}
