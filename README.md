@@ -6,7 +6,7 @@ app designed to make the adminstration and organisation of FRC teams just that m
 `npm run db:migrate`
 `npm run db:seed`
 `npm run build`
-`node build/index.js -r dotenv/config`
+`node -r dotenv/config build/index.js`
 ## note:
 - generate and migrate database after finishing the TODO
 - rn the TODO is to create permissions that allow the user to access whatever they should be
