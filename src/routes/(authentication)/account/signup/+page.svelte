@@ -62,21 +62,21 @@
             <hr>
             <div class="flex flex-row gap-2">
                 <Input name="Age" type="number" id="age" required pattern="[0-9]{'{2}'}" class="flex-1/5" />
-                <Input name="Phone number" type="text" id="pnumber" pattern="[0-9]{'{2}'}" />
+                <Input name="Phone number" type="text" id="pnumber" />
             </div>
             <Input name="Email" type="email" id="email" required />
             <hr>
             <div class="flex flex-row gap-2">
-                <Input name="House#" type="number" id="addnum" pattern="[0-9]{'{2}'}" class="flex-1/3" />
-                <Input name="Address line 1" type="text" id="addline1" pattern="[0-9]{'{2}'}" />
+                <Input name="House#" type="number" id="addnum" class="flex-1/3" />
+                <Input name="Address line 1" type="text" id="addline1" />
             </div>
             <div class="flex flex-row gap-2">
-                <Input name="Address line 2" type="text" id="addline2" pattern="[0-9]{'{2}'}" />
+                <Input name="Address line 2" type="text" id="addline2" />
             </div>
             <div class="flex flex-row gap-2">
-                <Input name="City" type="number" id="addcity" pattern="[0-9]{'{2}'}" class="flex-1/3" />
-                <Input name="State" type="number" id="addstate" pattern="[0-9]{'{2}'}" class="flex-1/3" />
-                <Input name="Zip code" type="text" id="addzip" pattern="[0-9]{'{2}'}" class="flex-1/4"/>
+                <Input name="City" type="number" id="addcity" class="flex-1/3" />
+                <Input name="State" type="number" id="addstate" class="flex-1/3" />
+                <Input name="Zip code" type="text" id="addzip" class="flex-1/4"/>
             </div>
         {/if}
         {#if form?.error}

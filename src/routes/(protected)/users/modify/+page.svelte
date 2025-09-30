@@ -316,11 +316,11 @@
 
 <!-- Dialog box to create a join code -->
 <Dialog
-        open={createJoinCodeOpen}
+        bind:open={createJoinCodeOpen}
         title="Create a join code"
         description="Generate a code to be used for a user to create their account."
         actions={[
-            { name: "Cancel", action: () => createJoinCodeOpen = false },
+            { name: "Cancel", close: true, action: () => null },
             { name: "Create", action: () => createJoinCode(), primary: true }
         ]}>
     <div class="flex flex-row space-x-2">
@@ -329,15 +329,14 @@
     </div>
     <div class="flex flex-row pt-2 gap-2">
         <Input name="Role" id="role" type="dropdown" elements={["Member", "Team Lead", "Captain", "Mentor", "Coach"]}
-               bind:value={createPromptData.role}/>
+            bind:value={createPromptData.role}/>
         <Input name="Subteam" id="subteam" type="dropdown" elements={[...data.subteams.map(v => v.name)]}
-               bind:value={createPromptData.subteam}/>
+            bind:value={createPromptData.subteam}/>
     </div>
     {#if createError}
         <div class="text-red-400">An error occured while creating a join code: <b>{createError}</b></div>
     {/if}
 </Dialog>
-
 <SidebarContent
         items={[
         {
