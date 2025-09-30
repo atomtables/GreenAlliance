@@ -7,6 +7,7 @@ app designed to make the adminstration and organisation of FRC teams just that m
 `npm run db:seed`
 `npm run build`
 `node -r dotenv/config build/index.js`
+change code.mjs to change the default username (which is **atomtables** with password **password**)
 ## note:
 - generate and migrate database after finishing the TODO
 - rn the TODO is to create permissions that allow the user to access whatever they should be
