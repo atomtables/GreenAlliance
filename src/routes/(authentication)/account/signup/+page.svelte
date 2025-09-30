@@ -74,8 +74,8 @@
                 <Input name="Address line 2" type="text" id="addline2" />
             </div>
             <div class="flex flex-row gap-2">
-                <Input name="City" type="number" id="addcity" class="flex-1/3" />
-                <Input name="State" type="number" id="addstate" class="flex-1/3" />
+                <Input name="City" type="text" id="addcity" class="flex-1/3" />
+                <Input name="State" type="text" id="addstate" class="flex-1/3" />
                 <Input name="Zip code" type="text" id="addzip" class="flex-1/4"/>
             </div>
         {/if}
