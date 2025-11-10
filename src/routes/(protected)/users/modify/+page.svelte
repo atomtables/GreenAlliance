@@ -13,8 +13,21 @@
     import autoTable from "jspdf-autotable";
     import { titleize, underlineText } from "$lib/functions/code";
 
+    interface User {
+        firstName: String,
+        lastName: String,
+        subteam: String,
+        email: String,
+        role: number
+    }
+
+    type Sort = "firstname" | "lastname" | "subteam" | "role";
+
     let {data} = $props();
     let members = $state(0);
+    let printRosterOpen = $state(false);
+    let type:number = $state();
+    let sort:number = $state();
 
     const positions = ["Member", "Lead", "Captain", "Mentor", "Coach", "Admin"]
     let createJoinCodeOpen = $state(false);
@@ -53,22 +66,17 @@
         createPromptData = {firstName: "", lastName: "", role: -1, subteam: -1, joinCode: null}
     }
 
-    interface User {
-        firstName: String,
-        lastName: String,
-        subteam: String,
-        email: String,
-        role: number
-    }
-
-    const bubbleSort = (arr:User[], s) => {
-        const sorts = ["firstName", "lastName", "subteam", "role"];
-        s = sorts[s]
-        if (arr.length === 1 || s === "role") return arr;
+    const bubbleSort = (arr:User[], s:number) => {
+        let k;
+        if (arr.length === 1 || s === 3) return arr;
+        else {
+            const sort = ["firstName", "lastName", "subteam"];
+            k = sort[s];
+        }
         for (let i = 0; i < arr.length; i++) {
             let minIndex = i;
             for (let j = i + 1; j < arr.length; j++) {
-                if (arr[j][s].toLowerCase() < arr[minIndex][s].toLowerCase()) {
+                if (arr[j][k].toLowerCase() < arr[minIndex][k].toLowerCase()) {
                     minIndex = j;
                 }
             }
@@ -79,7 +87,7 @@
         return arr;
     }
 
-    async function generatePDF(n:Number, s) {
+    async function generatePDF(n:Number, s:number) {
 
             const response = await fetch("/config.json");
             const teamInfo = await response.json();
@@ -173,7 +181,7 @@
     const csvFile = async () => {
         const users = await data.users;
         const headers = ["FirstName", "LastName", "Role", "Subteam"].join(",");
-        const body = [];
+        let body = [];
 
         Object.values(users).forEach((pos:User[]) => {
             for (const user of pos) {
@@ -190,7 +198,33 @@
         link.click();
         document.body.removeChild(link);
     }
+
+    const printRoster = async () => {
+        switch (type) {
+            case 0:
+            case 1:
+            case 2:
+                generatePDF(type, sort);
+                break;
+            case 3:
+                await csvFile();
+                break;
+        }
+    }
+
 </script>
+
+<Dialog 
+    bind:open={printRosterOpen} 
+    title="Download team roster" 
+    description=""
+    actions={[{name: 'Cancel', action: () => null, close: true}, {name: 'Download', close: true, primary: true, action: printRoster}]}
+>
+    <Input type="dropdown" elements={["Attendance", "Roster", "Squares", "CSV"]} name="Format" id="format" bind:value={type} />
+    {#if type === 0 || type === 1 || type === 2 }
+        <Input type="dropdown" elements={["First Name", "Last Name", "Subteam", "Role"]} name="Sort by" id="sort" bind:value={sort} />
+    {/if}
+</Dialog>
 
 {#snippet blank()}{/snippet}
 
@@ -351,8 +385,8 @@
                     content: listmembers,
                     shelf: [
                         { name: `Add Member`, action: () => {alert("Add Member", "To add a member, you should create a join code with their name and their role on the team. This will allow them to set up their account themselves.")} },
-                        { name: "Print Attendance", selections: ["Sort by First Name", "Sort by Last Name", "Sort by Subteam", "Sort by Role"], action: n => {
-                            generatePDF(0, n);
+                        { name: "Print Attendance", action: () => {
+                            printRosterOpen = true;
                         }},
                         { name: `Print Roster`, selections: ["Sort by First Name", "Sort by Last Name", "Sort by Subteam", "Sort by Role"], action: n => {
                             generatePDF(1, n);
