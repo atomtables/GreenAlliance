@@ -21,8 +21,6 @@
         role: number
     }
 
-    type Sort = "firstname" | "lastname" | "subteam" | "role";
-
     let {data} = $props();
     let members = $state(0);
     let printRosterOpen = $state(false);
@@ -385,18 +383,9 @@
                     content: listmembers,
                     shelf: [
                         { name: `Add Member`, action: () => {alert("Add Member", "To add a member, you should create a join code with their name and their role on the team. This will allow them to set up their account themselves.")} },
-                        { name: "Print Attendance", action: () => {
+                        { name: "Print", action: () => {
                             printRosterOpen = true;
                         }},
-                        { name: `Print Roster`, selections: ["Sort by First Name", "Sort by Last Name", "Sort by Subteam", "Sort by Role"], action: n => {
-                            generatePDF(1, n);
-                        }},
-                        { name: `Print Squares`, selections: ["Sort by First Name", "Sort by Last Name", "Sort by Subteam", "Sort by Role"], action: n => {
-                            generatePDF(2, n);
-                        }},
-                        { name: `Download CSV`, action: () => {
-                            csvFile();
-                        }}
                     ]
                 },
                 {
