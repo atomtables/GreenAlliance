@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
     import Button from "$lib/components/Button.svelte";
     import {enhance} from "$app/forms";
     import {onMount} from "svelte";
@@ -9,33 +9,35 @@
     let loading = $state(false);
     let { form } = $props();
 
+    type InputValue = string | FormDataEntryValue;
+
     let action = $state("?/verify")
     let nextStage = $state(false)
-    let firstName = $state("")
-    let lastName = $state("")
-    let joinCode = $state("")
+    let firstName: InputValue = $state("")
+    let lastName: InputValue = $state("")
+    let joinCode: InputValue = $state("")
 </script>
 
-<form {action} method="POST" class="mt-10 mx-auto w-max max-w-120 dark:bg-green-900 bg-green-200" use:enhance={(opts) => {
+<form {action} method="POST" class="mt-10 mx-auto w-max max-w-120 dark:bg-green-900 bg-green-200" use:enhance={(opts: any) => {
             loading = true;
             if (nextStage) {
-                opts.formData.set("fname", firstName)
-                opts.formData.set("lname", lastName)
-                opts.formData.set("jcode", joinCode)
+                opts.formData.set("fname", String(firstName ?? ""))
+                opts.formData.set("lname", String(lastName ?? ""))
+                opts.formData.set("jcode", String(joinCode ?? ""))
             } else {
-                firstName = opts.formData.get("fname")
-                lastName = opts.formData.get("lname")
-                joinCode = opts.formData.get("jcode")
+                firstName = String(opts.formData.get("fname") ?? "")
+                lastName = String(opts.formData.get("lname") ?? "")
+                joinCode = String(opts.formData.get("jcode") ?? "")
             }
 
-            return async ({ result, update }) => {
+            return async ({ result, update }: any) => {
                 loading = false;
-                if (result.type === 'success') {
+                if (result?.type === 'success') {
                     action = "?/create"
                     if (nextStage) invalidateAll().then(() => window.open("/", "_self"));
                     nextStage = true
-                    update(result)
-                } else update(result);
+                    update?.(result)
+                } else update?.(result);
             };
         }}>
     <div class="p-5 text-4xl font-bold dark:bg-green-800 bg-green-300">

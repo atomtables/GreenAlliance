@@ -5,7 +5,27 @@
     import HeaderTabHelper from "./HeaderTab.helper.svelte";
     import {goto} from "$app/navigation";
 
-    let {href, activeUrl, name, isDropdown, elements, class: className, showOnAuth, custom} = $props();
+    type HeaderTabProps = {
+        href?: string,
+        activeUrl?: string,
+        name: string,
+        isDropdown?: boolean,
+        elements?: {name: string, url: string}[],
+        class?: string,
+        showOnAuth?: boolean,
+        custom?: boolean
+    };
+
+    let {
+        href,
+        activeUrl,
+        name,
+        isDropdown,
+        elements,
+        class: className,
+        showOnAuth,
+        custom
+    }: HeaderTabProps = $props();
     let url = $derived(page.url.pathname);
 
     let dropdownActive = $state(false)

@@ -15,7 +15,7 @@
         type?: string,
         id?: string,
         class?: string,
-        value: any,
+        value?: any,
         action?: Function,
         elements?: string[],
         [key: string]: any

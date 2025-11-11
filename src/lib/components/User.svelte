@@ -1,4 +1,4 @@
-<script module>
+<script module lang="ts">
     export const translateRole = role => {
         if (role === Role.administrator) return "Administrator";
         if (role === Role.coach) return "Coach";
@@ -10,23 +10,22 @@
     }
 </script>
 
-<script>
-    /* Information required for the function of this component is the following:
-        - firstName
-        - lastName
-        - avatar
-        - role
-        - subteam
-        - email
-
-    All other information should be protected.
-    */
+<script lang="ts">
     import {Role} from "$lib/types/types";
-    import Button from "$lib/components/Button.svelte";
-    import {slide} from "svelte/transition";
     import Dropdown from "$lib/components/Dropdown.svelte";
 
-    let {user} = $props();
+    type UserProps = {
+        user: {
+            firstName: string,
+            lastName: string,
+            avatar?: string,
+            role: Role,
+            subteam: string,
+            email: string
+        }
+    }
+
+    let {user}:UserProps = $props();
 </script>
 <div class="my-2 bg-gray-800 p-2 flex flex-row gap-2">
     <div class="avatar shrink-0">
@@ -46,6 +45,6 @@
     </div>
     <div class="grow"></div>
     <div class=" hover:bg-neutral-500/25 active:bg-neutral-500/50 grid place-items-center transition-colors">
-        <Dropdown items={["Contact"]}/>
+        <Dropdown onselect={() => null} items={["Contact"]}/>
     </div>
 </div>

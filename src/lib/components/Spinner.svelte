@@ -1,13 +1,17 @@
 <script lang="ts">
+
+    type SpinnerProps = {
+        size?: number,
+        strokeWidth?: number,
+        class?: string
+    };
+
     let {
         size = 40, 
         strokeWidth = 4, 
         class: className
-    }: {
-        size?: number,
-        strokeWidth?: number,
-        class?: string
-    } = $props();
+    }: SpinnerProps = $props();
+
 </script>
 
 <style>

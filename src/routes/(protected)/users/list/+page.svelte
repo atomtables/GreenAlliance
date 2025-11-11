@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
     import Spinner from "$lib/components/Spinner.svelte";
     import {Permission} from "$lib/types/types";
     import User from "$lib/components/User.svelte";

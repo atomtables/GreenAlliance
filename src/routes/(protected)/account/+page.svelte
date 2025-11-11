@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
     import Button from "$lib/components/Button.svelte";
     import {goto} from "$app/navigation";
 </script>

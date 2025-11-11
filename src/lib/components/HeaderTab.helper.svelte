@@ -1,10 +1,10 @@
-<script>
+<script lang="ts">
     import Spinner from "$lib/components/Spinner.svelte";
     import {goto} from "$app/navigation";
 
     let {u, name, condition, onLoad} = $props();
 
-    let resolving = $state(false);
+    let resolving:boolean = $state(false);
 
     const handleClick = async (e) => {
         if (resolving) return;
@@ -20,7 +20,7 @@
         onclick={e => handleClick(e)}>
     <span class="flex flex-row">
         {#if resolving}
-            <Spinner size="24"/>
+            <Spinner size={24}/>
             <span class="px-1"></span>
         {/if}
         {name}

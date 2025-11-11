@@ -1,5 +1,15 @@
-<script>
+<script lang="ts">
     import Spinner from "$lib/components/Spinner.svelte";
+
+    type ButtonProps = {
+        children: () => any,
+        onclick?: () => boolean | void | Promise<boolean>,
+        class?: string,
+        type?: "button" | "submit" | "reset",
+        disabled?: boolean,
+        transparent?: boolean,
+        disableLoading?: boolean
+    };
 
     let {
         children, 
@@ -9,7 +19,7 @@
         disabled = $bindable(), 
         transparent = false, 
         disableLoading = false
-    } = $props();
+    }:ButtonProps = $props();
 
     let resolving = $state(false);
 
@@ -19,7 +29,7 @@
         resolving = true;
         try {
             if (typeof onclick === 'function')
-                await Promise.resolve(onclick?.(new CustomEvent(`onClickButton-${name}`)));
+                await Promise.resolve(onclick?.());
         } finally {
             resolving = false;
         }
@@ -31,7 +41,7 @@
         onclick={handleClick}>
     <span class="flex flex-row">
         {#if resolving && !disableLoading}
-            <Spinner size="24" class="mr-2" onGreen={!transparent}/>
+            <Spinner size={24} class="mr-2" />
         {/if}
         {@render children()}
     </span>

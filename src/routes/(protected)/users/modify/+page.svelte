@@ -3,7 +3,7 @@
     import SidebarContent from "$lib/substructure/SidebarContent.svelte";
     import banner1 from "../list/banner1.jpg";
     import {goto, invalidate} from "$app/navigation";
-    import Dialog, {alert, confirm} from "$lib/components/Dialog.svelte";
+    import Dialog, {alert, confirm, wait} from "$lib/components/Dialog.svelte";
     import Spinner from "$lib/components/Spinner.svelte";
     import Input from "$lib/components/Input.svelte";
     import Table from "$lib/components/Table.svelte";
@@ -235,30 +235,35 @@
     {:then activeJoinCodes}
         <Table source={activeJoinCodes} emptyStr="No join codes are currently active."
                actions={[{ name: "Delete", icon: "delete", action: async (selected, reset) => {
-                     let [value, close] = await confirm(
+                     let value = await confirm(
                         "Delete Join Codes",
                         "Are you sure you want to delete these join codes?",
                         `<div>
                             <b class="text-xl">${selected.map(e => activeJoinCodes[e].joinCode).join(", ")}</b>
                             <br>
                             <div>These join codes will be invalidated and will not be able to create a new account.</div>
-                        </div>`, false, true
+                        </div>`, false
                     )
                     if (!value) return;
-                    let req = await fetch("/api/users/joincodes", {
-                        method: "DELETE",
-                        body: JSON.stringify(selected.map(e => activeJoinCodes[e].joinCode)),
-                        headers: {'Content-Type': 'application/json'}
-                    })
-                    if (!req.ok) {
-                        close();
-                        await alert("Failed to Delete Join Codes", "The join codes were unable to be deleted and are still active. Please try again later.")
-                        return;
-                    }
-                    await invalidate("user:joincodes")
-                    reset();
-                    close();
-                    await alert("Successfully Deleted Join Codes", `The join codes have been deleted and are no longer valid to create new accounts.`,)
+                    const promise = (async () => {
+                        let req = await fetch("/api/users/joincodes", {
+                            method: "DELETE",
+                            body: JSON.stringify(selected.map(e => activeJoinCodes[e].joinCode)),
+                            headers: {'Content-Type': 'application/json'}
+                        })
+                        if (!req.ok) {
+                            await alert("Failed to Delete Join Codes", "The join codes were unable to be deleted and are still active. Please try again later.")
+                            return;
+                        }
+                        await invalidate("user:joincodes")
+                        reset();
+                        await alert("Successfully Deleted Join Codes", `The join codes have been deleted and are no longer valid to create new accounts.`,)
+                    }) ();
+                    await wait(
+                        promise,
+                        "Deleting Join Codes",
+                        "Please wait while the join codes are being deleted."
+                    )
                }}]}>
             {#snippet header()}
                 <th>Join Code</th>
