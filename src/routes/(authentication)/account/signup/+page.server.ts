@@ -1,4 +1,4 @@
-import * as auth from "$lib/server/auth.js";
+import * as auth from "$lib/server/auth";
 import { db } from "$lib/server/db/index.js";
 import * as schema from "$lib/server/db/schema.js"
 import {error, fail, isHttpError, isRedirect, redirect} from "@sveltejs/kit";

@@ -1,6 +1,6 @@
 import * as auth from '$lib/server/auth.js';
 import "$lib/prototypes/prototypes";
-import { Permission, Role } from '$lib/types/types';
+import { Role } from '$lib/types/types';
 
 const handleAuth = async ({ event, resolve }) => {
 	const sessionToken = event.cookies.get(auth.sessionCookieName);

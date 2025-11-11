@@ -4,7 +4,7 @@ import {db} from "$lib/server/db/index.js";
 import {subteams, users} from "$lib/server/db/schema.js";
 import {ne} from "drizzle-orm";
 
-export const load = ({locals}) => {
+export const load = ({locals}: any) => {
     if (!locals.user.permissions.includes(Permission.users)) return redirect(302, "/home?nopermission=true")
 
     let userselect = db.select({
@@ -17,7 +17,7 @@ export const load = ({locals}) => {
         createdAt: users.createdAt
     })
         .from(users)
-        .where(locals.user.permissions.includes(Permission.users_modify) ? ne(users.role, -1) : ne(users.role, Role.administrator))
+        .where(locals.user.permissions.includes(Permission.users_modify) ? ne(users.role, Role.administrator) : ne(users.role, Role.administrator))
 
     return {
         users: userselect.then(users => {
@@ -31,13 +31,13 @@ export const load = ({locals}) => {
              }
         }),
         usersbydatecreated: userselect.then(users => {
-           users.sort((a, b) => a.createdAt > b.createdAt);
-           let result = [];
+           users.sort((a, b) => (a.createdAt > b.createdAt ? 1 : -1));
+           let result: any[] = [];
            let currentyear = 0, index = -1;
            for (const user of users) {
-               if (user.createdAt.getYear() > currentyear) {
-                   currentyear = user.createdAt.getYear();
-                   result.push([new Date().getYear() - currentyear, user]);
+               if (user.createdAt.getFullYear() > currentyear) {
+                   currentyear = user.createdAt.getFullYear();
+                   result.push([new Date().getFullYear() - currentyear, user]);
                    index++;
                } else {
                    result[index].push(user);

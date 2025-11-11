@@ -3,7 +3,7 @@
     import Dialog from '$lib/components/Dialog.svelte';
     import IconButton from '$lib/components/IconButton.svelte';
     import Input from '$lib/components/Input.svelte';
-    import { Role } from '$lib/types/types.js';
+    import { Role } from '$lib/types/types';
     import { TypedQueryBuilder } from 'drizzle-orm/query-builders/query-builder';
     import { onMount } from 'svelte';
     import { alert } from '$lib/components/Dialog.svelte';

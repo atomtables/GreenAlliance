@@ -1,5 +1,5 @@
 import {fail, redirect} from "@sveltejs/kit";
-import * as auth from "$lib/server/auth.js";
+import * as auth from "$lib/server/auth";
 
 export const actions = {
     default: async (event) => {
@@ -11,5 +11,5 @@ export const actions = {
         auth.deleteSessionTokenCookie(event);
 
         return redirect(302, '/');
-    },
+    }
 }

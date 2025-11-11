@@ -1,10 +1,10 @@
-import {Permission, Role} from "$lib/types/types.js";
+import {Permission, Role} from "$lib/types/types";
 import {redirect} from "@sveltejs/kit";
 import {db} from "$lib/server/db/index.js";
 import {joincodes, subteams, users} from "$lib/server/db/schema.js";
 import {isNotNull, isNull, ne} from "drizzle-orm";
 
-export const load = async ({depends, locals}) => {
+export const load = async ({depends, locals}: any) => {
     depends("user:joincodes")
     if (!locals.user.permissions.includes(Permission.users_modify)) return redirect(302, "/home?nopermission=true");
     console.log(await db.select().from(joincodes));
@@ -19,8 +19,7 @@ export const load = async ({depends, locals}) => {
         createdAt: users.createdAt
     })
         .from(users)
-        // @ts-ignore
-        .where(locals.user.permissions.includes(Permission.users_modify) ? ne(users.role, -1) : ne(users.role, Role.administrator))
+        .where(locals.user.permissions.includes(Permission.users_modify) ? ne(users.role, Role.administrator) : ne(users.role, Role.administrator))
     return {
         joinCodes: {
             active: db.select().from(joincodes).where(isNull(joincodes.usedAt)),

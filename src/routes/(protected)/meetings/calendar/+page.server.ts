@@ -1,10 +1,10 @@
 import { db } from "$lib/server/db";
 import * as schema from "$lib/server/db/schema";
 import { and, gte, lt } from "drizzle-orm";
-import { Permission } from "$lib/types/types.js";
+import { Permission } from "$lib/types/types";
 import { redirect } from "@sveltejs/kit";
 
-export const load = async ({locals, depends}) => {
+export const load = async ({locals, depends}: any) => {
     if (!locals.user.permissions.includes(Permission.calendar)) return redirect(302, "/home?nopermission=true")
     depends("meetings:events")
 
