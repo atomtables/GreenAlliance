@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
     import "../app.css";
     import { page } from "$app/state";
     import HeaderTab from "$lib/components/HeaderTab.svelte";

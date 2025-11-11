@@ -22,7 +22,6 @@
     }
 
     let {data} = $props();
-    let members = $state(0);
     let printRosterOpen = $state(false);
     let type:number = $state();
     let sort:number = $state();

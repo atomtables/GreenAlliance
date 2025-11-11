@@ -1,7 +1,5 @@
 <script lang="ts">
     import Button from "$lib/components/Button.svelte";
-    import {enhance} from "$app/forms";
-    import {onMount} from "svelte";
     import Input from "$lib/components/Input.svelte";
 
     let loading = $state(false);
