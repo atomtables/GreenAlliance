@@ -8,8 +8,8 @@ test.describe("Sign out endpoint tests", () => {
         await page.goto("/account/signin");
 
         // Correctly fill form
-        await page.fill("input[name='username']", process.env.ADMIN_USERNAME);
-        await page.fill("input[name='password']", process.env.ADMIN_PASSWORD);
+        await page.fill("input[name='username']", process.env.MOD_USER);
+        await page.fill("input[name='password']", process.env.MOD_PASS);
 
         // Sign in
         await page.click("button[type='submit']");

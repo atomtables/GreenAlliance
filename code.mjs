@@ -9,7 +9,7 @@ const client = new Database(process.env.DATABASE_URL);
 
 export const database = drizzle(client, {schema});
 
-const passwordHash = await hash(process.env.ADMIN_PASSWORD, {
+const passwordHash = await hash(process.env.MOD_PASS, {
     // recommended minimum parameters
     memoryCost: 19456,
     timeCost: 2,
@@ -28,7 +28,7 @@ for (const subteamName of subteamNames) {
 // this is the admin
 await database.insert(schema.users).values({
     id: crypto.randomUUID(),
-    username: process.env.ADMIN_USERNAME,
+    username: process.env.MOD_USER,
     passwordHash,
     phone: "0123456789",
     address: "0123456789",

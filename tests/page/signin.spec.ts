@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test.describe("Signin endpoint test", () => {
+test.describe("Signin page endpoint test", () => {
 
     test("should redirect on successful login", async ({ page }) => {
 
@@ -8,8 +8,8 @@ test.describe("Signin endpoint test", () => {
         await page.goto("/account/signin");
 
         // Fill in form with standard user
-        await page.fill("input[name='username']", process.env.ADMIN_USERNAME);
-        await page.fill("input[name='password']", process.env.ADMIN_PASSWORD);
+        await page.fill("input[name='username']", process.env.MOD_USER);
+        await page.fill("input[name='password']", process.env.MOD_PASS);
 
         // Submit form
         await page.click("button[type='submit']");
@@ -46,8 +46,8 @@ test.describe("Signin endpoint test", () => {
         await page.goto("/account/signin");
 
         // Input invalid credentials
-        await page.fill("input[name='username']", process.env.ADMIN_USERNAME.toUpperCase());
-        await page.fill("input[name='password']", process.env.ADMIN_PASSWORD);
+        await page.fill("input[name='username']", process.env.MOD_USER.toUpperCase());
+        await page.fill("input[name='password']", process.env.MOD_PASS);
 
         // Submit form
         await page.click("button[type='submit']");

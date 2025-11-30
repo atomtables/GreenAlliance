@@ -1,17 +1,12 @@
-import * as auth from "$lib/server/auth";
-import {validateLogin} from "$lib/server/auth";
 import {fail, redirect} from "@sveltejs/kit";
+import { login } from "./util";
 
 export const actions = {
     default: async e => {
         try {
-            const existingUser = await validateLogin(await e.request.formData());
-
-            const sessionToken = auth.generateSessionToken();
-            const session = await auth.createSession(sessionToken, existingUser.id);
-            auth.setSessionTokenCookie(e, sessionToken, session.expiresAt);
-        } catch (e) {
             console.log(e);
+            await login(e);
+        } catch (e) {
             return fail(400, {"error": `${e.error?.message}`});
         }
         
