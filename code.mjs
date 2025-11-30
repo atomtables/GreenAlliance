@@ -9,13 +9,16 @@ const client = new Database(process.env.DATABASE_URL);
 
 export const database = drizzle(client, {schema});
 
-const passwordHash = await hash(process.env.MOD_PASS, {
-    // recommended minimum parameters
+const options = {
     memoryCost: 19456,
     timeCost: 2,
     outputLen: 32,
     parallelism: 1,
-});
+}
+
+const passwordHashMod = await hash(process.env.MOD_PASS, options);
+
+const passwordHashReg = await hash(process.env.REG_PASS, options);
 
 // First, create the subteams
 const subteamNames = ["All", "Electrical", "Mechanical", "Business", "Software"];
@@ -25,11 +28,11 @@ for (const subteamName of subteamNames) {
     });
 }
 
-// this is the admin
+// Insert Admin
 await database.insert(schema.users).values({
     id: crypto.randomUUID(),
     username: process.env.MOD_USER,
-    passwordHash,
+    passwordHash: passwordHashMod,
     phone: "0123456789",
     address: "0123456789",
     role: 5,
@@ -39,6 +42,22 @@ await database.insert(schema.users).values({
     firstName: "john",
     lastName: "doe",
     email: "johndoe@gmail.com",
+});
+
+// Insert Regular User
+await database.insert(schema.users).values({
+    id: crypto.randomUUID(),
+    username: process.env.REG_USER,
+    passwordHash: passwordHashReg,
+    phone: "0123456789",
+    address: "0123456789",
+    role: 0,
+    permissions: [0],
+    subteam: "All",
+    age: 21,
+    firstName: "jane",
+    lastName: "doe",
+    email: "janedoe@gmail.com",
 });
 
 function getRandomInt(min, max) {
@@ -68,7 +87,7 @@ for (let i = 0; i < 25; i++) {
     await database.insert(schema.users).values({
         id,
         username: id,
-        passwordHash,
+        passwordHash: passwordHashReg,
         phone: "0123456789",
         address: "0123456789",
         role: [0, 1, 2, 3, 4][Math.floor(Math.random() * 5)],
