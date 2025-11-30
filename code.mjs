@@ -9,7 +9,7 @@ const client = new Database(process.env.DATABASE_URL);
 
 export const database = drizzle(client, {schema});
 
-const passwordHash = await hash("password", {
+const passwordHash = await hash(process.env.ADMIN_PASSWORD, {
     // recommended minimum parameters
     memoryCost: 19456,
     timeCost: 2,
@@ -28,17 +28,17 @@ for (const subteamName of subteamNames) {
 // this is the admin
 await database.insert(schema.users).values({
     id: crypto.randomUUID(),
-    username: "atomtables",
+    username: process.env.ADMIN_USERNAME,
     passwordHash,
     phone: "0123456789",
     address: "0123456789",
     role: 5,
     permissions: [0, 30, 31],
     subteam: "All",
-    age: 15,
-    firstName: "adithiya",
-    lastName: "venkatakrishnan",
-    email: "adithiya.venkatakrishnan@atomtables.dev",
+    age: 21,
+    firstName: "john",
+    lastName: "doe",
+    email: "johndoe@gmail.com",
 });
 
 function getRandomInt(min, max) {
