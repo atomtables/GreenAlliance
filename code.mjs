@@ -74,9 +74,9 @@ for (let i = 0; i < 25; i++) {
         role: [0, 1, 2, 3, 4][Math.floor(Math.random() * 5)],
         permissions,
         subteam: ["All", "Electrical", "Mechanical", "Business", "Software"][Math.floor(Math.random() * 5)],
-        age: 15,
+        age: 21,
         firstName,
         lastName,
-        email: `${firstName}.${lastName}@atomtables.dev`,
+        email: `${firstName}.${lastName}@example.user`,
     });
 }
