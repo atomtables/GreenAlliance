@@ -1,0 +1,48 @@
+name: Playwright Tests
+
+# Trigger: When do you want this to run?
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Check out your code
+    - uses: actions/checkout@v4
+
+    # 2. Install Node.js
+    - uses: actions/setup-node@v4
+      with:
+        node-version: lts/*
+
+    # 3. Install dependencies (npm install)
+    - name: Install dependencies
+      run: npm ci
+
+    # 4. Install Playwright Browsers (Chromium, Firefox, Webkit)
+    - name: Install Playwright Browsers
+      run: npx playwright install --with-deps
+
+    # 5. Build the SvelteKit app (Optional, but good practice)
+    # Some tests might rely on the build output
+    - name: Build App
+      run: npm run build
+
+    # 6. Run the tests
+    - name: Run Playwright tests
+      run: npx playwright test
+
+    # 7. Upload the results (Screenshots/Videos of failures)
+    # If a test fails, you can download the "artifact" to see what happened
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: playwright-report
+        path: playwright-report/
+        retention-days: 30
