@@ -1,10 +1,11 @@
-import {fail, redirect} from "@sveltejs/kit";
-import { login } from "./util";
+import { validateLogin } from "$lib/server/auth";
+
+import {fail, redirect, type Actions} from "@sveltejs/kit";
+import { login } from "$lib/functions/authUtil";
 
 export const actions = {
     default: async e => {
         try {
-            console.log(e);
             await login(e);
         } catch (e) {
             return fail(400, {"error": `${e.error?.message}`});
@@ -12,4 +13,4 @@ export const actions = {
         
         return redirect(302, '/');
     }
-}
+} satisfies Actions;

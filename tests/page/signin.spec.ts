@@ -1,18 +1,11 @@
 import { test, expect } from "@playwright/test";
+import { signin } from "./util";
 
 test.describe("Signin page endpoint test", () => {
 
     test("should redirect on successful login", async ({ page }) => {
 
-        // Go to the signin page
-        await page.goto("/account/signin");
-
-        // Fill in form with standard user
-        await page.fill("input[name='username']", process.env.MOD_USER);
-        await page.fill("input[name='password']", process.env.MOD_PASS);
-
-        // Submit form
-        await page.click("button[type='submit']");
+        await signin(page);
 
         // Expect redirect
         await expect(page).toHaveURL("/");
@@ -21,15 +14,7 @@ test.describe("Signin page endpoint test", () => {
 
     test("should give error on unsuccessful login attempt", async ({ page }) => {
 
-        // Go to the signin page
-        await page.goto("/account/signin");
-
-        // Input invalid credentials
-        await page.fill("input[name='username']", "invaliduser");
-        await page.fill("input[name='password']", "fakepassword");
-
-        // Submit the form
-        await page.click("button[type='submit']");
+        await signin(page, "invaliduser", "fakepassword");
 
         // Expect no redirect
         await expect(page).toHaveURL("/account/signin");
@@ -42,15 +27,7 @@ test.describe("Signin page endpoint test", () => {
 
     test("should give warning on mistyped username", async ({ page }) => {
 
-        // Go to the signin page
-        await page.goto("/account/signin");
-
-        // Input invalid credentials
-        await page.fill("input[name='username']", process.env.MOD_USER.toUpperCase());
-        await page.fill("input[name='password']", process.env.MOD_PASS);
-
-        // Submit form
-        await page.click("button[type='submit']");
+        await signin(page, process.env.MOD_USER.toUpperCase());
 
         // Expect no redirect
         await expect(page).toHaveURL("/account/signin");
