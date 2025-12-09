@@ -28,7 +28,6 @@
         if (page.url.searchParams){
         const urlParams = new URLSearchParams(window.location.search);
         const noPermission = urlParams.get("nopermission");
-        console.log(noPermission);
         if (noPermission) {
             alert("You do not have permission to access this page.").then(() => null);
         }}

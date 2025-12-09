@@ -40,9 +40,25 @@
             await alert("There was an error submitting your request. Try again later.")
         }
     }
-    onMount(() => {
-        console.log(data.meetings);
-    })
+    const removeEvent = async (meetingId: number) => {
+        let res = await fetch('/api/meetings', {
+            method: 'DELETE',
+            body: JSON.stringify({meetingId})
+        })
+        if (!res.ok) {
+            let json = await res.json()
+            formError = "There was an error loading data. " + json.error;
+            return;
+        }
+        let json = await res.json()
+        if (json.success) {
+            invalidate("meetings:events")
+            await alert("Delete meeting", "Successfully deleted the event!")
+            return
+        } else {
+            await alert("There was an error submitting your request. Try again later.")
+        }
+    }
 </script>
 
 <Dialog 
@@ -103,6 +119,10 @@
                                     <span class="font-light">
                                         {meeting.title}
                                     </span>
+                                    <IconButton onclick={() => removeEvent(meeting.id)}>
+                                        {console.log(meeting.id)}
+                                        <span class="material-symbols-outlined icons-fill !text-sm">delete</span>
+                                    </IconButton>
                                 </div>
                             </div>
                         {/if}

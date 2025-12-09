@@ -13,4 +13,18 @@ const signin = async ( request, username = process.env.MOD_USER, password = proc
 
 }
 
-export { signin };
+const successfulMeetingPut = async ( request ) => {
+
+    // Create meeting
+    const response = await request.put('/api/meetings', {
+        data: {
+            title: "Test Meeting",
+            date: new Date().toISOString()
+        }
+    });
+
+    return response;
+
+}
+
+export { signin, successfulMeetingPut };
