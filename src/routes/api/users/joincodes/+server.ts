@@ -38,9 +38,12 @@ export const PUT: RequestHandler = async ({request, locals}: any) => {
 export const DELETE: RequestHandler = async ({request, locals}: any) => {
     if (!locals?.user?.permissions?.includes?.(Permission.users_modify)) return error(403, "Access denied.");
     try {
-        let joinCodes = await request.json();
-        console.log("deleting join codes", joinCodes)
-        if (!joinCodes) return error(400, "Please list join codes to delete.");
+        const joinCodes = await request.json();
+
+        // Expect an array of join codes
+        if (!Array.isArray(joinCodes) || joinCodes.length === 0) {
+            return error(400, "Please list join codes to delete.");
+        }
 
         await db.delete(joincodes).where(inArray(joincodes.joinCode, joinCodes));
         return json({success: true}, {status: 200})
