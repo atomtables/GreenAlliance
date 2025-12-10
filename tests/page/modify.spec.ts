@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test } from "@playwright/test";
 import { lackPerms, properPerms } from "./util";
 
 test.describe("Modify users endpoint test", () => {
@@ -9,10 +9,10 @@ test.describe("Modify users endpoint test", () => {
     });
 
     test("with proper permissions", async ({ page }) => {
+
         // Sign in, go to url, expect no redirect
         await properPerms(page, "/users/modify");
 
-        // Expect to get back db data (implement later)
     });
 
 });

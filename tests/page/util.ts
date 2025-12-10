@@ -1,4 +1,6 @@
 import { expect } from "@playwright/test";
+import {db} from "$lib/server/db/index.js";
+import { eq } from "drizzle-orm";
 
 const signin = async ( page, user = process.env.MOD_USER, pass = process.env.MOD_PASS ) => {
 
