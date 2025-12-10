@@ -11,6 +11,16 @@ jobs:
   test:
     timeout-minutes: 60
     runs-on: ubuntu-latest
+    
+    # --- ADDED: Environment Variables from your .env file ---
+    env:
+      DATABASE_URL: local.db
+      MOD_USER: admin
+      MOD_PASS: password
+      REG_USER: user
+      REG_PASS: password
+      NODE_ENV: development
+    # --------------------------------------------------------
 
     steps:
     # 1. Check out your code
@@ -29,8 +39,7 @@ jobs:
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps
 
-    # 5. Build the SvelteKit app (Optional, but good practice)
-    # Some tests might rely on the build output
+    # 5. Build the SvelteKit app
     - name: Build App
       run: npm run build
 
@@ -39,7 +48,6 @@ jobs:
       run: npx playwright test
 
     # 7. Upload the results (Screenshots/Videos of failures)
-    # If a test fails, you can download the "artifact" to see what happened
     - uses: actions/upload-artifact@v4
       if: always()
       with:
