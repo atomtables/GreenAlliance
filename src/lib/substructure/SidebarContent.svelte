@@ -56,7 +56,7 @@
 <div class="w-full h-full {!nested && 'p-10'}">
     <div class="w-full h-full flex flex-row flex-nowrap {!nested ? 'border-2 border-gray-600' : ''} ">
         <div class="w-64  border-gray-600 {!nested ? 'bg-gray-600' : 'bg-gray-700'} shrink-0">
-            {#each items as {tabName: name, tabIcon: icon}, ind}
+            {#each items.filter(v=>v) as {tabName: name, tabIcon: icon}, ind}
                 <button onclick={() => current = ind}
                         class="block grow w-full {ind === current ? 'bg-neutral-500/50' : 'hover:bg-neutral-500/25 active:bg-neutral-500/50'} uppercase font-bold py-5 px-2 text-lg flex items-center gap-2 transition-all">
                     <span class="material-symbols-outlined icons-fill text-xl -translate-y-0.25 pl-5 pr-5">{icon}</span>
@@ -65,7 +65,7 @@
             {/each}
         </div>
         <div class="bg-gray-600/50 flex-1 grow-1 overflow-scroll" bind:this={w} {onscroll}>
-            {#each items as {title, description, content, shelf, custom, nestedItems = null}, ind}
+            {#each items.filter(v=>v) as {title, description, content, shelf, custom, nestedItems = null}, ind}
                 {#if ind === current}
                     {#if custom}
                         {@render content()}
@@ -86,18 +86,18 @@
                             {/if}
                             <div class="">
                                 <div class="-translate-y-27">
-                                    <div class="sticky top-27 z-20">
+                                    <div class="sticky top-27 z-20 pb-3">
                                         <div class="transition-all {wait && 'bg-green-800'}">
-                                            <h1 class="max-w-2xl m-auto font-bold text-5xl pt-4 pb-2 {!description && 'pb-3'}">{title}</h1>
+                                            <h1 class="max-w-2xl m-auto font-bold text-5xl pt-4 pb-2 {!description && 'pt-10 pb-6'} ">{title}</h1>
                                             {#if description}
                                                 <h4 class="max-w-2xl m-auto {shelf?.length > 0 ? 'pb-3' : 'pb-6'}">{description}</h4>
                                             {/if}
                                         </div>
                                         {#if shelf && shelf.length > 0}
-                                            <div class="bg-green-700 p-2 mb-3 w-full shadow-xl"
+                                            <div class="bg-green-700 p-2 w-full shadow-xl"
                                                  style="filter: none!important">
                                                 <div class="max-w-2xl mx-auto min-w-max flex flex-row space-x-2 overflow-visible flex-nowrap -translate-x-5">
-                                                    {#each shelf as {name, selections, action}}
+                                                    {#each shelf.filter(v => v) as {name, selections, action}}
                                                         {#if selections}
                                                             <Dropdown items={selections} onselect={action}
                                                                       buttonText={name}/>
