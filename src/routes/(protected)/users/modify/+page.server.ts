@@ -3,6 +3,7 @@ import {redirect} from "@sveltejs/kit";
 import {db} from "$lib/server/db/index.js";
 import {joincodes, subteams, users} from "$lib/server/db/schema.js";
 import {isNotNull, isNull, ne} from "drizzle-orm";
+import { cleanUserFromDatabase } from "$lib/server/auth";
 
 export const load = async ({depends, locals}: any) => {
     depends("user:joincodes")
@@ -55,7 +56,7 @@ export const load = async ({depends, locals}: any) => {
                 userselect
                     .then(users => {
                         // screw boolean algebra
-                        return ({ subteam, users: users.filter(user => user.subteam === subteam) });
+                        return ({ subteam, users: users.filter(user => user.subteam === subteam).map(cleanUserFromDatabase) });
                     })
             ))
         ),

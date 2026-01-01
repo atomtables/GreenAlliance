@@ -1,13 +1,19 @@
+import type { Handle } from '@sveltejs/kit';
 import * as auth from '$lib/server/auth.js';
 import "$lib/prototypes/prototypes";
 import { Role } from '$lib/types/types';
+import { canUserAccess } from './sitemap';
+import { redirect } from '@sveltejs/kit';
 
-const handleAuth = async ({ event, resolve }) => {
+const handleAuth: Handle = async ({ event, resolve }) => {
 	const sessionToken = event.cookies.get(auth.sessionCookieName);
 
 	if (!sessionToken) {
 		event.locals.user = null;
 		event.locals.session = null;
+		if (!canUserAccess(null, event.url.pathname, event.request.method)) {
+			return redirect(302, '/');
+		}
 		return resolve(event);
 	}
 
@@ -25,6 +31,9 @@ const handleAuth = async ({ event, resolve }) => {
 		user.permissions = Array.from(Array(33).keys())
 	}
 	event.locals.session = session;
+	if (!canUserAccess(event.locals.user, event.url.pathname, event.request.method)) {
+		return redirect(302, '/home?nopermission=true');
+	}
 	return resolve(event);
 };
 

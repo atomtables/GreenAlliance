@@ -5,21 +5,19 @@ import {db} from '$lib/server/db';
 import * as table from '$lib/server/db/schema.js';
 import {hash, verify} from "@node-rs/argon2";
 import { isRedirect, redirect } from '@sveltejs/kit';
+import type { User } from '$lib/types/types';
+import type { RequestEvent } from '../../routes/$types';
 
 const DAY_IN_MS = 1000 * 60 * 60 * 24;
 
 export const sessionCookieName = 'auth-session';
 
-export function generateSessionToken() {
+export function generateSessionToken(): string {
 	const bytes = crypto.getRandomValues(new Uint8Array(18));
 	return encodeBase64url(bytes);
 }
 
-/**
- * @param {string} token
- * @param {string} userId
- */
-export async function createSession(token, userId) {
+export async function createSession(token: string, userId: string) {
 	const sessionId = encodeHexLowerCase(sha256(new TextEncoder().encode(token)));
 	const session = {
 		id: sessionId,
@@ -30,8 +28,29 @@ export async function createSession(token, userId) {
 	return session;
 }
 
-/** @param {string} token */
-export async function 	validateSessionToken(token) {
+// This really just makes sure that no sensitive data is leaked
+// a lot of the time we don't even select all columns, so this just makes sure that's
+// never an issue. 
+export function cleanUserFromDatabase(user: typeof table.users.$inferSelect): User {
+	return {
+		id: user.id,
+		age: user.age || null,
+		username: user.username,
+		passwordHash: null,
+		createdAt: user.createdAt instanceof Date ? user.createdAt.getTime() : Number(user.createdAt),
+		firstName: user.firstName,
+		lastName: user.lastName,
+		email: user.email,
+		phone: user.phone ?? null,
+		address: user.address ?? null,
+		avatar: typeof user.avatar === "string" ? user.avatar : user.avatar ? String(user.avatar) : "",
+		role: user.role,
+		permissions: user.permissions ?? [],
+		subteam: user.subteam,
+	};
+}
+
+export async function validateSessionToken(token: string): Promise<{ session: typeof table.session.$inferSelect | null; user: User | null }> {
 	const sessionId = encodeHexLowerCase(sha256(new TextEncoder().encode(token)));
 	const [result] = await db
 		.select({
@@ -41,12 +60,13 @@ export async function 	validateSessionToken(token) {
 		})
 		.from(table.session)
 		.innerJoin(table.users, eq(table.session.userId, table.users.id))
-		.where(eq(table.session.id, sessionId));
+		.where(eq(table.session.id, sessionId))
+		.limit(1);
 
 	if (!result) {
 		return { session: null, user: null };
 	}
-	const { session, user } = result;
+	const { session, user } = result as { session: typeof table.session.$inferSelect; user: typeof table.users.$inferSelect };
 
 	const sessionExpired = Date.now() >= session.expiresAt.getTime();
 	if (sessionExpired) {
@@ -63,11 +83,10 @@ export async function 	validateSessionToken(token) {
 			.where(eq(table.session.id, session.id));
 	}
 
-	return { session, user };
+	return { session, user: cleanUserFromDatabase(user) };
 }
 
-/** @param {string} sessionId */
-export async function invalidateSession(sessionId) {
+export async function invalidateSession(sessionId: string) {
 	await db.delete(table.session).where(eq(table.session.id, sessionId));
 }
 
@@ -90,7 +109,7 @@ export function deleteSessionTokenCookie(event) {
 	});
 }
 
-function validateUsername(username) {
+function validateUsername(username: string) {
 	return (
 		typeof username === 'string' &&
 		username.length >= 3 &&
@@ -99,7 +118,7 @@ function validateUsername(username) {
 	);
 }
 
-function validatePassword(password) {
+function validatePassword(password: string) {
 	return (
 		typeof password === 'string' &&
 		password.length >= 6 &&
