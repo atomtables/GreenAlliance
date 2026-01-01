@@ -32,7 +32,7 @@
         </div>
         <div class="grow"></div>
         <div class=" hover:bg-neutral-500/25 active:bg-neutral-500/50 grid place-items-center transition-colors">
-            <Dropdown items={["Contact Leads"]}/>
+            <Dropdown onselect={()=>null} items={["Contact Leads"]}/>
         </div>
     </div>
 {/snippet}
@@ -55,7 +55,7 @@
             >
                 <span class="material-symbols-outlined icons-fill text-xl">arrow_drop_down</span>
             </Button>
-            <Dropdown items={["Change subteam", "Contact"]} class="!py-1 mb-2"/>
+            <Dropdown onselect={()=>null} items={["Change subteam", "Contact"]} class="!py-1 mb-2"/>
         </div>
     </div>
     {#if display}

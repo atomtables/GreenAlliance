@@ -3,7 +3,7 @@
     import {Permission} from "$lib/types/types";
     import User from "$lib/components/User.svelte";
     import SidebarContent from "$lib/substructure/SidebarContent.svelte";
-    import SubteamComponent from "./SubteamComponent.svelte";
+    import SubteamComponent from "../SubteamComponent.svelte";
     import banner1 from "./banner1.jpg";
     import {goto} from "$app/navigation";
 
@@ -103,6 +103,8 @@
         {/if}
     {/await}
 {/snippet}
+
+
 {#snippet listsubteams()}
     <div>
         {#await data.subteamsWithMembers}
