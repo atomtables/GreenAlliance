@@ -8,7 +8,7 @@ export const createCode = (j) => {
 }
 
 export const formatDate = date => {
-    return date.toLocaleDateString(undefined, {
+    return new Date(date).toLocaleDateString(undefined, {
         year: "numeric",
         month: "numeric",
         day: "numeric",

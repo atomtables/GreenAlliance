@@ -16,8 +16,7 @@ export const routeRules: RouteRule[] = [
     { path: "/home", auth: true, permissions: [Permission.exist] },
     { path: "/account/logout", auth: true, permissions: [Permission.exist] },
     { path: "/meetings/calendar", auth: true, permissions: [Permission.exist, Permission.calendar] },
-    { path: "/users/list", auth: true, permissions: [Permission.exist, Permission.users] },
-    { path: "/users/modify", auth: true, permissions: [Permission.exist, Permission.users_modify] },
+    { path: "/users", auth: true, permissions: [Permission.exist, Permission.users] },
 
     { path: "/api/meetings", auth: true, permissions: [Permission.exist, Permission.calendar_moderate], methods: ["PUT", "DELETE"] },
     { path: "/api/users/joincodes", auth: true, permissions: [Permission.exist, Permission.users_modify], methods: ["PUT", "DELETE"] },

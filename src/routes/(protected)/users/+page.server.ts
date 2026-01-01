@@ -1,26 +1,23 @@
-import {Permission, Role} from "$lib/types/types";
-import {redirect} from "@sveltejs/kit";
-import {db} from "$lib/server/db/index.js";
-import {joincodes, subteams, users} from "$lib/server/db/schema.js";
-import {isNotNull, isNull, ne} from "drizzle-orm";
+import { Permission, Role, type User } from "$lib/types/types";
+import { redirect } from "@sveltejs/kit";
+import { db } from "$lib/server/db/index.js";
+import { joincodes, subteams, users } from "$lib/server/db/schema.js";
+import { isNotNull, isNull, ne } from "drizzle-orm";
 import { cleanUserFromDatabase } from "$lib/server/auth";
 
-export const load = async ({depends, locals}: any) => {
+export const load = async ({ depends, locals }: any) => {
     depends("user:joincodes")
     if (!locals.user.permissions.includes(Permission.users_modify)) return redirect(302, "/home?nopermission=true");
     console.log(await db.select().from(joincodes));
     // load all join codes
-    let userselect = db.select({
-        firstName: users.firstName,
-        lastName: users.lastName,
-        avatar: users.avatar,
-        role: users.role,
-        subteam: users.subteam,
-        email: users.email,
-        createdAt: users.createdAt
-    })
-        .from(users)
-        .where(locals.user.permissions.includes(Permission.users_modify) ? ne(users.role, Role.administrator) : ne(users.role, Role.administrator))
+    let userselect = db.query.users.findMany({
+        columns: {
+            passwordHash: false,
+            phone: false,
+            address: false,
+        },
+        where: locals.user.permissions.includes(Permission.users_modify) ? undefined : ne(users.role, Role.administrator)
+    }).then((v: any[]) => v.map(cleanUserFromDatabase));
     return {
         joinCodes: {
             active: db.select().from(joincodes).where(isNull(joincodes.usedAt)),
@@ -34,15 +31,17 @@ export const load = async ({depends, locals}: any) => {
                 captains: users.filter(user => user.role === Role.captain),
                 leads: users.filter(user => user.role === Role.lead),
                 members: users.filter(user => user.role === Role.member),
-                 }
+            }
         }),
         usersbydatecreated: userselect.then(users => {
-            users.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
-            let result = [];
+            users.sort((a: User, b: User) => (new Date(a.createdAt).getTime() > new Date(b.createdAt).getTime() ? 1 : -1));
+            let result: any[] = [];
             let currentyear = 0, index = -1;
             for (const user of users) {
-                if (user.createdAt.getFullYear() > currentyear) {
-                    currentyear = user.createdAt.getFullYear();
+                const createdDate = new Date(user.createdAt);
+                const createdYear = createdDate.getFullYear();
+                if (createdYear > currentyear) {
+                    currentyear = createdYear;
                     result.push([new Date().getFullYear() - currentyear, user]);
                     index++;
                 } else {
