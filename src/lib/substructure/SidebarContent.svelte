@@ -17,7 +17,7 @@
             shelf?: {
                 name: string,
                 selections?: string[] | null,
-                action: Function
+                action: () => (void | boolean | Promise<boolean>)
             }[],
             custom?: boolean,
             nestedItems?: ComponentProps["items"]
@@ -54,8 +54,8 @@
 </script>
 
 <div class="w-full h-full {!nested && 'p-10'}">
-    <div class="w-full h-full flex flex-row flex-nowrap {!nested && 'border-2 border-gray-600'} ">
-        <div class="w-64 border-r-2 border-gray-600 {!nested ? 'bg-gray-600' : 'bg-gray-700'} shrink-0">
+    <div class="w-full h-full flex flex-row flex-nowrap {!nested ? 'border-2 border-gray-600' : ''} ">
+        <div class="w-64  border-gray-600 {!nested ? 'bg-gray-600' : 'bg-gray-700'} shrink-0">
             {#each items as {tabName: name, tabIcon: icon}, ind}
                 <button onclick={() => current = ind}
                         class="block grow w-full {ind === current ? 'bg-neutral-500/50' : 'hover:bg-neutral-500/25 active:bg-neutral-500/50'} uppercase font-bold py-5 px-2 text-lg flex items-center gap-2 transition-all">

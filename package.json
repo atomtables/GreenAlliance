@@ -42,7 +42,8 @@
     "dotenv": "^16.5.0",
     "drizzle-orm": "^0.40.0",
     "jspdf": "^3.0.3",
-    "jspdf-autotable": "^5.0.2"
+    "jspdf-autotable": "^5.0.2",
+    "typescript": "^5.9.3"
   },
   "resolutions": {
     "drizzle-orm": "^0.40.0"

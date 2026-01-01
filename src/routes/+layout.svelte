@@ -29,7 +29,7 @@
         const urlParams = new URLSearchParams(window.location.search);
         const noPermission = urlParams.get("nopermission");
         if (noPermission) {
-            alert("You do not have permission to access this page.").then(() => null);
+            alert("You do not have access to this page.").then(() => null);
         }}
     });
 </script>
