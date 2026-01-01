@@ -2,7 +2,7 @@
     import "../app.css";
     import { page } from "$app/state";
     import HeaderTab from "$lib/components/HeaderTab.svelte";
-    import { titleize } from '$lib/functions/code';
+    import { titleize } from "$lib/functions/code";
     import { onMount } from "svelte";
     import { alert } from "$lib/components/Dialog.svelte";
 
@@ -25,12 +25,13 @@
     });
 
     $effect(() => {
-        if (page.url.searchParams){
-        const urlParams = new URLSearchParams(window.location.search);
-        const noPermission = urlParams.get("nopermission");
-        if (noPermission) {
-            alert("You do not have access to this page.").then(() => null);
-        }}
+        if (page.url.searchParams) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const noPermission = urlParams.get("nopermission");
+            if (noPermission) {
+                alert("You do not have access to this page.").then(() => null);
+            }
+        }
     });
 </script>
 
@@ -59,7 +60,7 @@
 <header
     class="flex flex-col fixed w-full top-0 z-50 transition-shadow duration-200 {isScrolled
         ? 'shadow-2xl'
-        : ''}"
+        : ''} header-container"
 >
     <div
         class="flex items-center justify-center relative p-5 bg-green-400 dark:bg-green-700"
@@ -75,9 +76,10 @@
             {/if}
         </div>
     </div>
-    <div
-        class="bg-green-300 dark:bg-green-800 flex flex-row flex-nowrap overflow-x-scroll justify-center"
-    >
+    <div class="bg-green-300 dark:bg-green-800 nav-wrap">
+        <div
+            class="flex flex-row flex-nowrap overflow-x-auto nav-strip justify-center"
+        >
         <HeaderTab name="Home" href="/" />
         <HeaderTab
             name="Landing"
@@ -109,9 +111,29 @@
                 { name: "Modify Members/Groups", url: "/users/modify" },
             ]}
         />
+        </div>
     </div>
 </header>
 <div class="h-[126px]"></div>
 <div class="w-full h-[calc(100vh-126px)]">
     {@render children()}
 </div>
+
+<style>
+    .header-container {
+        overflow: hidden;
+    }
+
+    .nav-wrap {
+        overflow: hidden;
+    }
+
+    .nav-strip {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .nav-strip::-webkit-scrollbar {
+        display: none;
+    }
+</style>
