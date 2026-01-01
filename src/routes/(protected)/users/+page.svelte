@@ -434,15 +434,15 @@
                             })(data.user.permissions),
                             action: (n) => (members = n),
                         },
-                        {
+                        data.user.permissions.includes(Permission.users_modify) ? {
                             name: "Print",
                             action: () => {
                                 printRosterOpen = true;
                             },
-                        },
+                        } : undefined,
                     ],
                 },
-                {
+                data.user.permissions.includes(Permission.users_modify) && {
                     tabName: "Join Codes",
                     tabIcon: "link",
                     title: "Join Codes",
@@ -463,11 +463,7 @@
             title: "All Subteams",
             content: listsubteams,
             shelf: [
-                data.user.permissions.includes(Permission.users_modify) && {
-                    name: "Modify Subteams",
-                    action: () => goto("/users/modify"),
-                },
-            ].filter((val) => typeof val !== "boolean"),
+            ],
         },
     ]}
     banner={"/banner1.jpg"}

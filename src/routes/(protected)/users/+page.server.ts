@@ -7,7 +7,6 @@ import { cleanUserFromDatabase } from "$lib/server/auth";
 
 export const load = async ({ depends, locals }: any) => {
     depends("user:joincodes")
-    if (!locals.user.permissions.includes(Permission.users_modify)) return redirect(302, "/home?nopermission=true");
     console.log(await db.select().from(joincodes));
     // load all join codes
     let userselect = db.query.users.findMany({
@@ -19,7 +18,7 @@ export const load = async ({ depends, locals }: any) => {
         where: locals.user.permissions.includes(Permission.users_modify) ? undefined : ne(users.role, Role.administrator)
     }).then((v: any[]) => v.map(cleanUserFromDatabase));
     return {
-        joinCodes: {
+        joinCodes: locals.user.permissions.includes(Permission.users_modify) && {
             active: db.select().from(joincodes).where(isNull(joincodes.usedAt)),
             used: db.select().from(joincodes).where(isNotNull(joincodes.usedAt))
         },
