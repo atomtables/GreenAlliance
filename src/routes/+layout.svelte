@@ -120,13 +120,6 @@
 </div>
 
 <style>
-    .header-container {
-        overflow: hidden;
-    }
-
-    .nav-wrap {
-        overflow: hidden;
-    }
 
     .nav-strip {
         scrollbar-width: none;
