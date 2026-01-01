@@ -6,13 +6,14 @@ import { canUserAccess } from './sitemap';
 import { redirect } from '@sveltejs/kit';
 
 const handleAuth: Handle = async ({ event, resolve }) => {
+	const isApi = event.url.pathname.startsWith('/api');
 	const sessionToken = event.cookies.get(auth.sessionCookieName);
 
 	if (!sessionToken) {
 		event.locals.user = null;
 		event.locals.session = null;
-		if (!canUserAccess(null, event.url.pathname, event.request.method)) {
-			return redirect(302, '/');
+		if (!isApi && !canUserAccess(null, event.url.pathname, event.request.method)) {
+			return redirect(302, '/account/signin');
 		}
 		return resolve(event);
 	}
@@ -31,7 +32,8 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 		user.permissions = Array.from(Array(33).keys())
 	}
 	event.locals.session = session;
-	if (!canUserAccess(event.locals.user, event.url.pathname, event.request.method)) {
+
+	if (!isApi && !canUserAccess(event.locals.user, event.url.pathname, event.request.method)) {
 		return redirect(302, '/home?nopermission=true');
 	}
 	return resolve(event);

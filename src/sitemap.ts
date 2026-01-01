@@ -70,7 +70,7 @@ const findRuleFor = (url: string, method: string) => {
 
 export const canUserAccess = (user: User | null | undefined, url: string, method = "GET"): boolean => {
     const rule = findRuleFor(url, method);
-    if (!rule) return true; // if no rule, allow by default
+    if (!rule) return true; // allow when no rule
 
     if (rule.auth && !user) return false;
 

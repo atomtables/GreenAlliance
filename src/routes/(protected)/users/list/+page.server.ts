@@ -42,12 +42,14 @@ export const load = ({ locals }) => {
             }
         }),
         usersbydatecreated: userselect.then(users => {
-            users.sort((a, b) => (a.createdAt > b.createdAt ? 1 : -1));
+            users.sort((a, b) => (new Date(a.createdAt).getTime() > new Date(b.createdAt).getTime() ? 1 : -1));
             let result: any[] = [];
             let currentyear = 0, index = -1;
             for (const user of users) {
-                if (user.createdAt.getFullYear() > currentyear) {
-                    currentyear = user.createdAt.getFullYear();
+                const createdDate = new Date(user.createdAt);
+                const createdYear = createdDate.getFullYear();
+                if (createdYear > currentyear) {
+                    currentyear = createdYear;
                     result.push([new Date().getFullYear() - currentyear, user]);
                     index++;
                 } else {
