@@ -19,6 +19,7 @@ jobs:
       REG_USER: user
       REG_PASS: password
       NODE_ENV: development
+      PUBLIC_TEAM_NAME: The Green Alliance
 
     steps:
     # 1. Check out your code
