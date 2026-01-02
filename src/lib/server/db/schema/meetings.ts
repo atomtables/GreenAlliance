@@ -1,20 +1,21 @@
-import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
+import { integer, pgTable, serial, text, timestamp } from 'drizzle-orm/pg-core';
 import * as crypto from 'node:crypto';
+import { json } from './common';
 import { users } from './users';
 
-export const meetings = sqliteTable('meetings', {
+export const meetings = pgTable('meetings', {
     id: text('id').primaryKey().$default(() => crypto.randomUUID()),
-    createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$default(() => new Date()),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
     createdBy: text('user').notNull().references(() => users.id),
     title: text('title').notNull(),
     description: text('description'),
-    dateOf: integer('date_of', { mode: 'timestamp' }).notNull(),
-    subteams: text('subteams', { mode: 'json' }).$type<string[]>().notNull().default(sql`'[]'`),
+    dateOf: timestamp('date_of', { mode: 'date' }).notNull(),
+    subteams: json<string[]>('subteams').notNull().default(sql`'[]'::jsonb`),
 });
 
-export const meetingAttendees = sqliteTable('meeting_attendees', {
-    id: integer('id').primaryKey(),
+export const meetingAttendees = pgTable('meeting_attendees', {
+    id: serial('id').primaryKey(),
     meetingId: text('meeting_id').notNull().references(() => meetings.id),
     userId: text('user_id').notNull().references(() => users.id),
     status: text('status').$type<'yes' | 'no' | 'maybe'>(),
