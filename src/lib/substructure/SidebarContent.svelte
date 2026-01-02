@@ -51,7 +51,11 @@
         scrollY = 0.4 * w.scrollTop;
         wait = convertPixelsToRem(w.scrollTop) > 15;
     };
+
+    let descHeight = $state(0);
 </script>
+
+{@debug descHeight}
 
 <div class="w-full h-full {!nested && 'p-10'}">
     <div class="w-full h-full flex flex-row flex-nowrap {!nested ? 'border-2 border-gray-600' : ''} ">
@@ -87,10 +91,10 @@
                             <div class="">
                                 <div class="-translate-y-27">
                                     <div class="sticky top-27 z-20 pb-3">
-                                        <div class="transition-all {wait && 'bg-green-800'}">
+                                        <div class="transition-all {wait && 'bg-green-800'}" style="margin-top: -{descHeight}px">
                                             <h1 class="max-w-2xl m-auto font-bold text-5xl pt-4 pb-2 {!description && 'pt-10 pb-6'} ">{title}</h1>
                                             {#if description}
-                                                <h4 class="max-w-2xl m-auto {shelf?.length > 0 ? 'pb-3' : 'pb-6'}">{description}</h4>
+                                                <h4 bind:clientHeight={descHeight} class="align-end max-w-2xl m-auto {shelf?.length > 0 ? 'pb-3' : 'pb-6'}">{description}</h4>
                                             {/if}
                                         </div>
                                         {#if shelf && shelf.length > 0}

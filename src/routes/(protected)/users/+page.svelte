@@ -443,10 +443,10 @@
                     ],
                 },
                 data.user.permissions.includes(Permission.users_modify) && {
-                    tabName: "Join Codes",
+                    tabName: "New Joins",
                     tabIcon: "link",
                     title: "Join Codes",
-                    description: "Allow users to create an account through the use of a join code.",
+                    description: "Allow users to create an account through the use of a join code. Users can only create an account if they have a valid join code. You can set the role that they will have when they create their account.",
                     content: joincodes,
                     shelf: [
                         {
