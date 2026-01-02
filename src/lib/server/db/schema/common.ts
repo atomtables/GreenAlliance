@@ -1,11 +1,4 @@
-import { customType } from 'drizzle-orm/sqlite-core';
+import { jsonb } from 'drizzle-orm/pg-core';
 
-export const json = <T>(name: string) =>
-    customType<{
-        data: T;
-        driverData: string;
-    }>({
-        dataType() { return 'json'; },
-        toDriver: (value: T) => JSON.stringify(value),
-        fromDriver: (value: string) => JSON.parse(value),
-    })(name);
+// Provides a typed jsonb column helper for Postgres-backed tables.
+export const json = <T>(name: string) => jsonb(name).$type<T>();

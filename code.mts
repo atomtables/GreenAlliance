@@ -1,7 +1,7 @@
-import {hash} from "@node-rs/argon2";
+import { hash } from "@node-rs/argon2";
 import * as crypto from "node:crypto";
-import {drizzle} from 'drizzle-orm/better-sqlite3';
-import Database from 'better-sqlite3';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
 import * as schema from './src/lib/server/db/schema';
 import "dotenv/config";
 import { InferInsertModel } from "drizzle-orm";
@@ -9,9 +9,9 @@ import readline from "readline";
 
 console.log("TheGreenAlliance seed script ==== SHOULD NOT BE RUN IN PRODUCTION EVER ====");
 
-const client = new Database(process.env.DATABASE_URL);
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-export const database = drizzle(client, {schema});
+export const database = drizzle(pool, { schema });
 
 const options = {
     memoryCost: 19456,
@@ -132,3 +132,5 @@ for (let i = 0; i < 25; i++) {
         email: `${firstName}.${lastName}@example.user`,
     });
 }
+
+await pool.end();

@@ -1,18 +1,11 @@
-import Database from "better-sqlite3"
-import "dotenv/config"
-import {sql} from "drizzle-orm"
-import {drizzle} from "drizzle-orm/better-sqlite3"
-import {migrate} from "drizzle-orm/better-sqlite3/migrator"
+import "dotenv/config";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
+import { Pool } from "pg";
 
-const sqlite = new Database(process.env.DATABASE_URL)
-const db = drizzle(sqlite, { logger: true })
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const db = drizzle(pool, { logger: true });
 
-db.run(sql`PRAGMA foreign_keys=OFF;`)
+await migrate(db, { migrationsFolder: "./drizzle" });
 
-try {
-    migrate(db, { migrationsFolder: "./drizzle" })
-} finally {
-    db.run(sql`PRAGMA foreign_keys=ON;`)
-}
-
-sqlite.close()
+await pool.end();

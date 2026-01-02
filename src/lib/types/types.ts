@@ -1,18 +1,11 @@
 
-export type PhoneNumber = {
-    countryCode: number // +1
-    areaCode: number // 908
-    group1: number // 338
-    group2: number // 2903
-}
-
 export type Address = {
-    house: number // 123
-    street: string // Main St
-    line2: string // Apt 4B
-    city: string // Springfield
-    state: string // IL
-    zip: number // 62704
+    streetLine1: string,
+    streetLine2?: string,
+    city: string,
+    state: string,
+    zip: string,
+    country_code: string,
 }
 
 export enum Role {
