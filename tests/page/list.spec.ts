@@ -5,13 +5,13 @@ test.describe("User list endpoint test", () => {
 
     test("lack of permissions", async ({ page }) => {
         // Sign in, go to url, expect redirect
-        await lackPerms(page, "/users/list");
+        await lackPerms(page, "/users");
     });
 
     test("with proper permissions", async ({ page }) => {
 
         // Sign in, go to url, expect no redirect
-        await properPerms(page, "/users/list");
+        await properPerms(page, "/users");
 
     });
 
