@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { integer, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import { integer, pgTable, text, timestamp, uniqueIndex, varchar } from 'drizzle-orm/pg-core';
 import { type Address, type Permission, Role } from '$lib/types/types';
 import * as crypto from 'node:crypto';
 import { json } from './common';
@@ -9,7 +9,7 @@ export const subteams = pgTable('subteams', {
 });
 
 export const users = pgTable('users', {
-    id: text('id').primaryKey().$default(() => crypto.randomUUID()),
+    id: varchar('id', { length: 36 }).primaryKey().$default(() => crypto.randomUUID()),
     age: integer('age').notNull(),
     username: text('username').notNull().unique(),
     passwordHash: text('password_hash').notNull(),
@@ -30,7 +30,7 @@ export const users = pgTable('users', {
 ]);
 
 export const joincodes = pgTable('joincodes', {
-    joinCode: text('joinCode').primaryKey(),
+    joinCode: varchar('joinCode', { length: 10 }).primaryKey(),
     role: integer('role').notNull().$type<Role>(),
     subteam: text('subteam').notNull().references(() => subteams.name).default('All'),
     firstName: text('firstName'),

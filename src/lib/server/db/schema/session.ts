@@ -1,8 +1,8 @@
-import { pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, varchar } from 'drizzle-orm/pg-core';
 import { users } from './users';
 
 export const session = pgTable('session', {
-    id: text('id').primaryKey(),
-    userId: text('user_id').notNull().references(() => users.id),
+    id: varchar('id', { length: 36 }).primaryKey(),
+    userId: varchar('user_id', { length: 36 }).notNull().references(() => users.id),
     expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
 });
