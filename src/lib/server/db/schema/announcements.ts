@@ -4,7 +4,7 @@
 import { pgTable, serial, text, timestamp, varchar, boolean, index } from 'drizzle-orm/pg-core';
 import { users } from './users';
 import { json } from './common';
-import { Snowflake } from '$lib/functions/snowflake';
+import { Snowflake } from '$lib/functions/Snowflake';
 
 export const announcements = pgTable('announcements', {
     id: varchar('id', { length: 21 }).primaryKey().$default(() => Snowflake()),

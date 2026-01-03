@@ -3,7 +3,7 @@
 // collections of chats created between users
 // etc.
 
-import { Snowflake } from "$lib/functions/snowflake";
+import { Snowflake } from "$lib/functions/Snowflake";
 import {pgTable, serial, varchar, integer, text, timestamp, uniqueIndex, boolean, index} from "drizzle-orm/pg-core";
 import { users } from "./users";
 import { json } from "./common";
