@@ -1,5 +1,7 @@
 // These types are interchangeable with the database schema types in src/lib/server/db/schema
 
+import type Table from "$lib/components/Table.svelte";
+
 export interface Announcement {
     id: string;
     author: string;
@@ -37,4 +39,23 @@ export interface Chat {
     // chat name (for group chats)
     name?: string;
     archived?: boolean;
+    participantIds: string[];
+}
+
+export function normaliseChatFromDatabase(res: {
+    id: string;
+    isGroup: boolean;
+    name: string | null;
+    archived: boolean;
+    participants: { userId: string }[];
+}): Chat {
+    const participantIds = res.participants.map(p => p.userId);
+    const chatData: Chat = {
+        id: res.id,
+        isGroup: res.isGroup,
+        name: res.name ?? undefined,
+        archived: res.archived,
+        participantIds: participantIds,
+    };
+    return chatData;
 }
