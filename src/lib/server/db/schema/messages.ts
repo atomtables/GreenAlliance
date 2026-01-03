@@ -4,7 +4,7 @@
 // etc.
 
 import { Snowflake } from "$lib/functions/Snowflake";
-import {pgTable, serial, varchar, integer, text, timestamp, uniqueIndex, boolean, index} from "drizzle-orm/pg-core";
+import {pgTable, serial, varchar, integer, text, timestamp, uniqueIndex, boolean, index, primaryKey} from "drizzle-orm/pg-core";
 import { users } from "./users";
 import { json } from "./common";
 
@@ -16,7 +16,7 @@ export const messages = pgTable("messages", {
     // content
     content: text("content").notNull(),
     // chat id that this message was sent in
-    chatId: varchar("chat_id", { length: 21 }).notNull(),
+    chatId: varchar("chat_id", { length: 21 }).notNull().references(() => chats.id),
     // was message edited?
     edited: boolean("edited").notNull().default(false),
     // previous message history (in case message was edited) (only for admins)
@@ -30,4 +30,23 @@ export const messages = pgTable("messages", {
     index("message_index_author").on(table.author),
     // index by chat for easy retrieval of chat messages
     index("message_index_chat").on(table.chatId),
+]);
+
+export const chats = pgTable("chats", {
+    id: varchar("id", { length: 21 }).primaryKey().$default(() => Snowflake()),
+    // is this a group chat?
+    isGroup: boolean("is_group").notNull().default(false),
+    // chat name (for group chats)
+    name: text("name"),
+    archived: boolean("archived").notNull().default(false),
+});
+
+// Junction table for chat participants (allows efficient lookup of user's chats)
+export const chatParticipants = pgTable("chat_participants", {
+    chatId: varchar("chat_id", { length: 21 }).notNull().references(() => chats.id),
+    userId: varchar("user_id", { length: 21 }).notNull().references(() => users.id),
+}, (table) => [
+    primaryKey({ columns: [table.chatId, table.userId] }),
+    // Index for finding all chats for a user
+    index("chat_participants_user_idx").on(table.userId),
 ]);
