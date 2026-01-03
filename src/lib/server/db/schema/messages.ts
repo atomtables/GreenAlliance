@@ -4,7 +4,8 @@
 // etc.
 
 import { Snowflake } from "$lib/functions/Snowflake";
-import {pgTable, serial, varchar, integer, text, timestamp, uniqueIndex, boolean, index, primaryKey} from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
+import { pgTable, serial, varchar, integer, text, timestamp, uniqueIndex, boolean, index, primaryKey} from "drizzle-orm/pg-core";
 import { users } from "./users";
 import { json } from "./common";
 
@@ -44,9 +45,36 @@ export const chats = pgTable("chats", {
 // Junction table for chat participants (allows efficient lookup of user's chats)
 export const chatParticipants = pgTable("chat_participants", {
     chatId: varchar("chat_id", { length: 21 }).notNull().references(() => chats.id),
-    userId: varchar("user_id", { length: 21 }).notNull().references(() => users.id),
+    userId: varchar("user_id", { length: 36 }).notNull().references(() => users.id),
 }, (table) => [
     primaryKey({ columns: [table.chatId, table.userId] }),
     // Index for finding all chats for a user
     index("chat_participants_user_idx").on(table.userId),
 ]);
+
+export const chatsRelations = relations(chats, ({ many }) => ({
+    participants: many(chatParticipants),
+    messages: many(messages),
+}));
+
+export const chatParticipantsRelations = relations(chatParticipants, ({ one }) => ({
+    chat: one(chats, {
+        fields: [chatParticipants.chatId],
+        references: [chats.id],
+    }),
+    user: one(users, {
+        fields: [chatParticipants.userId],
+        references: [users.id],
+    }),
+}));
+
+export const messagesRelations = relations(messages, ({ one }) => ({
+    chat: one(chats, {
+        fields: [messages.chatId],
+        references: [chats.id],
+    }),
+    authorUser: one(users, {
+        fields: [messages.author],
+        references: [users.id],
+    }),
+}));
