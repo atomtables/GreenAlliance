@@ -6,6 +6,7 @@ import * as schema from './src/lib/server/db/schema';
 import "dotenv/config";
 import { InferInsertModel } from "drizzle-orm";
 import readline from "readline";
+import { type Address } from "./src/lib/types/types.js";
 
 console.log("TheGreenAlliance seed script ==== SHOULD NOT BE RUN IN PRODUCTION EVER ====");
 
@@ -18,6 +19,15 @@ const options = {
     timeCost: 2,
     outputLen: 32,
     parallelism: 1,
+}
+
+const defaultAddress: Address = {
+    streetLine1: "123 Main St",
+    streetLine2: "Apt 4B",
+    city: "Anytown",
+    state: "CA",
+    zip: "12345",
+    country_code: "USA"
 }
 
 // Create an interface for input and output
@@ -67,7 +77,7 @@ await database.insert(schema.users).values({
     username: process.env.MOD_USER,
     passwordHash: passwordHashMod,
     phone: "0123456789",
-    address: "0123456789",
+    address: defaultAddress,
     role: 5,
     permissions: [0, 30, 31],
     subteam: "All",
@@ -83,7 +93,7 @@ await database.insert(schema.users).values({
     username: process.env.REG_USER,
     passwordHash: passwordHashReg,
     phone: "0123456789",
-    address: "0123456789",
+    address: defaultAddress,
     role: 0,
     permissions: [0],
     subteam: "All",
@@ -122,7 +132,7 @@ for (let i = 0; i < 25; i++) {
         username: id,
         passwordHash: passwordHashReg,
         phone: "0123456789",
-        address: "0123456789",
+        address: defaultAddress,
         role: [0, 1, 2, 3, 4][Math.floor(Math.random() * 5)],
         permissions,
         subteam: ["All", "Electrical", "Mechanical", "Business", "Software"][Math.floor(Math.random() * 5)],
