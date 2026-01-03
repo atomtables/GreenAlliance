@@ -10,10 +10,25 @@ jobs:
   test:
     timeout-minutes: 60
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: thegreenalliance
+        ports:
+          - 5432:5432
+        # keep service healthy before running migrations/seeds
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
     
     # Environment variables are required for the DB scripts to work
     env:
-      DATABASE_URL: local.db
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/thegreenalliance
       MOD_USER: admin
       MOD_PASS: password
       REG_USER: user
@@ -33,6 +48,13 @@ jobs:
     # 3. Install dependencies
     - name: Install dependencies
       run: npm ci
+
+    - name: Wait for Postgres
+      run: |
+        until pg_isready -h localhost -p 5432 -U postgres; do
+          echo "Postgres is unavailable - sleeping";
+          sleep 2;
+        done
 
     # 4. Install Playwright Browsers
     - name: Install Playwright Browsers
