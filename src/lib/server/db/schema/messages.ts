@@ -13,7 +13,7 @@ export const messages = pgTable("messages", {
     // Snowflake ID (so includes timestamp)
     id: varchar("id", { length: 21 }).primaryKey().$default(() => Snowflake()),
     // Sender ID (links to user + indexed)
-    author: varchar("author", { length: 21 }).notNull().references(() => users.id),
+    author: varchar("author", { length: 36 }).notNull().references(() => users.id),
     // content
     content: text("content").notNull(),
     // chat id that this message was sent in
