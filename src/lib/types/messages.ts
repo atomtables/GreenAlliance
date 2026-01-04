@@ -1,6 +1,6 @@
 // These types are interchangeable with the database schema types in src/lib/server/db/schema
 
-import type Table from "$lib/components/Table.svelte";
+import * as table from "$lib/server/db/schema";
 
 export interface Announcement {
     id: string;
@@ -58,4 +58,16 @@ export function normaliseChatFromDatabase(res: {
         participantIds: participantIds,
     };
     return chatData;
+}
+
+export function normaliseMessageFromDatabase(res: typeof table.messages.$inferSelect): Message {
+    const messageData: Message = {
+        id: res.id,
+        author: res.author,
+        content: res.content,
+        chatId: res.chatId,
+        edited: res.edited,
+        attachments: res.attachments,
+    };
+    return messageData;
 }

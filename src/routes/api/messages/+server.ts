@@ -107,6 +107,9 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
     participantIds.push(locals.user.id); // ensure the creator is included
     participantIds = Array.from(new Set(participantIds)); // deduplicate
 
+    const trimmedName = name?.trim() ?? "";
+    const hasExplicitName = trimmedName.length > 0;
+
     // let's get the User for each here to make sure the IDs can be messaged
     let validUsers: User[] = [];
     try {
@@ -130,40 +133,42 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
     // excluding archived chats
     // we do this by collecting all chats from the logged in user, then filtering each one to see
     // if the participant IDs match exactly
-    try {
-        const existingChats = await db.query.chats.findMany({
-            where: eq(chats.archived, false),
-            with: {
-                participants: {
-                    columns: {
-                        userId: true,
+    if (!hasExplicitName) {
+        try {
+            const existingChats = await db.query.chats.findMany({
+                where: eq(chats.archived, false),
+                with: {
+                    participants: {
+                        columns: {
+                            userId: true,
+                        }
                     }
                 }
-            }
-        });
-        for (const chat of existingChats) {
-            const chatParticipantIds = chat.participants.map(p => p.userId).sort();
-            const desiredParticipantIds = participantIds.slice().sort();
-            let allMatch = chatParticipantIds.length === desiredParticipantIds.length;
-            for (let i = 0; i < chatParticipantIds.length; i++) {
-                if (chatParticipantIds.at(i) !== desiredParticipantIds.at(i)) {
-                    allMatch = false;
-                    break;
+            });
+            for (const chat of existingChats) {
+                const chatParticipantIds = chat.participants.map(p => p.userId).sort();
+                const desiredParticipantIds = participantIds.slice().sort();
+                let allMatch = chatParticipantIds.length === desiredParticipantIds.length;
+                for (let i = 0; i < chatParticipantIds.length; i++) {
+                    if (chatParticipantIds.at(i) !== desiredParticipantIds.at(i)) {
+                        allMatch = false;
+                        break;
+                    }
                 }
+                // chat already exists
+                if (allMatch)
+                    return new Response(
+                        JSON.stringify({
+                            chat: chat,
+                            existing: true
+                        }),
+                        { status: 200 }
+                    );
             }
-            // chat already exists
-            if (allMatch)
-                return new Response(
-                    JSON.stringify({
-                        chat: chat,
-                        existing: true
-                    }),
-                    { status: 200 }
-                );
+        } catch (e) {
+            console.error(`${request.url}:${request.method}: Error checking existing chats: `, e);
+            return new Response(JSON.stringify({ error: `Internal server error` }), { status: 500 });
         }
-    } catch (e) {
-        console.error(`${request.url}:${request.method}: Error checking existing chats: `, e);
-        return new Response(JSON.stringify({ error: `Internal server error` }), { status: 500 });
     }
 
     // ok let's create the chat now
@@ -171,7 +176,7 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
     try {
         const chatInsert = await db.insert(chats).values({
             isGroup: participantIds.length > 2,
-            name: name && name.trim().length > 0 ? name.trim() : participantIds.length > 2 ? validUsers.map(u => u.username).join(", ") : null,
+            name: hasExplicitName ? trimmedName : participantIds.length > 2 ? validUsers.map(u => u.username).join(", ") : null,
         }).returning().then(res => res[0]);
 
         // Insert participants into the junction table
