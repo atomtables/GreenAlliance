@@ -5,6 +5,7 @@
     import { titleize } from "$lib/functions/code";
     import { onMount } from "svelte";
     import { alert } from "$lib/components/Dialog.svelte";
+    import { Permission } from "$lib/types/types";
 
     let { data, children } = $props();
     let { user, session } = data || {};
@@ -105,6 +106,17 @@
                 { name: "Calendar", url: "/meetings/calendar" },
                 { name: "Modify Members/Groups", url: "/users/modify" },
             ]}
+        />
+        <HeaderTab
+            name="Comms"
+            activeUrl="/messages"
+            showOnAuth
+            isDropdown
+            elements={[
+                { name: "Messages", url: "/messages/chat" },
+                data.user?.permissions.includes(Permission.message_moderate) && { name: "Message Log", url: "/messages/admin" },
+                { name: "Announcements", url: "/messages/announcements" },
+            ].filter(v=>v)}
         />
         </div>
     </div>

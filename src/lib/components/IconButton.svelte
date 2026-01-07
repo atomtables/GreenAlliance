@@ -13,7 +13,7 @@
     } = $props();
 </script>
 
-<Button {onclick} class="!p-2 !rounded-full {className}">
+<Button {onclick} class="[&]:p-2 [&]:rounded-full {className}" {transparent} type={type as any} {disabled} {disableLoading}>
     <div class="material-symbols-outlined icons-fill !text-sm !flex !items-center">
         {@render children()}
     </div>

@@ -7,7 +7,7 @@ import { db } from "$lib/server/db/index";
 import { normaliseChatFromDatabase, type Chat, type Message } from "$lib/types/messages";
 import { RequiresPermissions } from "$lib/functions/requirePermissions";
 import { Permission, Role, type User } from "$lib/types/types";
-import { eq, inArray } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import { cleanUserFromDatabase } from "$lib/server/auth";
 
 // Retrieve all chats for a given user.
@@ -35,16 +35,30 @@ export const GET: RequestHandler = async ({ locals }) => {
                             userId: true,
                         },
                     },
+                    messages: {
+                        limit: 1,
+                        orderBy: desc(messages.id),
+                        where: (msg) => eq(msg.deleted, false),
+                    }
                 },
-            },
+            }
         },
-    });
+    }).then(res => res.map(row => {
+        return {
+            ...row,
+            chat: row.chat ? {
+                ...row.chat,
+                lastMessage: row.chat.messages?.[0] ?? null
+            } : null
+        };
+    }));
 
     // De-duplicate chats (a chat can appear multiple times via participants relation)
     const chatMap = new Map<string, Chat>();
     for (const row of participantRows) {
         const chat = row.chat;
         if (!chat) continue;
+        if (chat.archived) continue; // skip archived chats
         const participantIds = chat.participants?.map((p) => p.userId) ?? [];
         if (!chatMap.has(chat.id)) {
             chatMap.set(chat.id, {
@@ -53,6 +67,7 @@ export const GET: RequestHandler = async ({ locals }) => {
                 name: chat.name ?? undefined,
                 archived: chat.archived,
                 participantIds,
+                lastMessage: chat.lastMessage ?? null
             });
         }
     }
@@ -192,6 +207,7 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
             isGroup: chatInsert.isGroup,
             name: chatInsert.name ?? undefined,
             participantIds: participantIds,
+            lastMessage: null
         };
 
         return new Response(JSON.stringify({ chat: newChat }), { status: 201 });
@@ -224,10 +240,15 @@ export const DELETE: RequestHandler = async ({ request, locals }) => {
                     columns: {
                         userId: true,
                     }
+                },
+                messages: {
+                    limit: 1,
+                    orderBy: desc(messages.id),
                 }
             }
-        }).then(res => {
+        }).then((res: any) => {
             if (!res) throw new Error("Chat not found");
+            res.lastMessage = res.messages?.[0] ?? null;
             return normaliseChatFromDatabase(res);
         });
         if (!chatRecord) {

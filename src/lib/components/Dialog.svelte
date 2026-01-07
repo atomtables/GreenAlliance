@@ -1,5 +1,5 @@
 <script module lang="ts">
-    import { createRawSnippet, mount, unmount } from 'svelte';
+    import { createRawSnippet, mount, unmount, type Snippet } from 'svelte';
     import Dialog from './Dialog.svelte';
     import Input from '$lib/components/Input.svelte';
 
@@ -11,11 +11,9 @@
         }
     }
 
-    export const alert = async (title, description = '', children = null, manualclose = false) => {
+    export const alert = async (title: string, description: string = '', children: string = null) => {
         let state;
         const result = new Promise((resolve) => (state = resolve));
-        let close;
-        const manual = new Promise((resolve) => (close = resolve));
 
         let element = document.createElement('div');
         document.body.appendChild(element);
@@ -29,7 +27,6 @@
                     name: 'OK',
                     action: async () => {
                         await state(true);
-                        if (manualclose) await never(manual);
                     },
                     primary: true,
                 },
@@ -46,26 +43,19 @@
 
         props.open = true;
 
-        let value = [await result];
-        if (manualclose) {
-            manual.then(() => {
-                props.open = false;
-                setTimeout(async () => {
-                    await unmount(dialog);
-                    element.remove();
-                }, 400);
-            });
-        } else {
-            props.open = false;
-            setTimeout(async () => {
-                await unmount(dialog);
-                element.remove();
-            }, 400);
-        }
+        let value = await result;
+        props.open = false;
+        setTimeout(async () => {
+            await unmount(dialog);
+            element.remove();
+        }, 400);
         return value;
     };
 
-    export const confirm = async (title, description = '', children = null, isSnippet = true): Promise<boolean> => {
+    export const confirm = async (title, description = '', {children, isSnippet}: {
+        children?: string | Snippet,
+        isSnippet?: boolean
+    } = {}): Promise<boolean> => {
         let state;
         const result: Promise<boolean> = new Promise((resolve) => (state = resolve));
 
@@ -96,7 +86,7 @@
             children: isSnippet
                 ? children
                 : createRawSnippet(() => ({
-                      render: () => children ?? '<div></div>',
+                      render: () => children as string ?? '<div></div>',
                   })),
         });
 
@@ -116,7 +106,10 @@
         return value;
     };
 
-    export const wait = async (promise, title, description, children=null, showFail=false) => {
+    export const wait = async (promise, title, description, { children, showFail }: {
+        children?: string,
+        showFail?: boolean
+    } = {}) => {
         let state;
         const result = new Promise((resolve) => (state = resolve));
         let close;
@@ -167,7 +160,7 @@
                 await unmount(dialog);
                 element.remove();
             }, 400);
-            alert('Error', 'An error occured while waiting.');
+            if (showFail) alert('Error', 'An error occured while waiting.');
         });
 
         promise.finally(() => state(true));
@@ -175,7 +168,12 @@
         return [await result, close];
     };
 
-    export const prompt = async (title, description = '', children = null, isSnippet = false): Promise<string> => {
+    export const prompt = async (title, description = '', { children, isSnippet, startingValue, promptValue }: {
+        children?: string,
+        isSnippet?: boolean,
+        promptValue?: string
+        startingValue?: string
+    } = {}): Promise<string> => {
         let state;
         const result = new Promise<string>((resolve) => (state = resolve));
 
@@ -183,8 +181,8 @@
         document.body.appendChild(element);
 
         let inputProps = $state({
-            name: 'File name',
-            value: '',
+            name: promptValue || 'Input',
+            value: startingValue || '',
         });
         let props = $state({
             open: false,

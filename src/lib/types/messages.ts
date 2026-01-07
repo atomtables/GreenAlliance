@@ -40,6 +40,8 @@ export interface Chat {
     name?: string;
     archived?: boolean;
     participantIds: string[];
+    // last message in the chat (if any)
+    lastMessage: Message;
 }
 
 export function normaliseChatFromDatabase(res: {
@@ -48,6 +50,7 @@ export function normaliseChatFromDatabase(res: {
     name: string | null;
     archived: boolean;
     participants: { userId: string }[];
+    lastMessage: typeof table.messages.$inferSelect | Message | null;
 }): Chat {
     const participantIds = res.participants.map(p => p.userId);
     const chatData: Chat = {
@@ -56,6 +59,7 @@ export function normaliseChatFromDatabase(res: {
         name: res.name ?? undefined,
         archived: res.archived,
         participantIds: participantIds,
+        lastMessage: res.lastMessage ? normaliseMessageFromDatabase(res.lastMessage as typeof table.messages.$inferSelect) : null
     };
     return chatData;
 }

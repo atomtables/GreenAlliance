@@ -32,13 +32,13 @@
 <div class="relative inline-block">
     <Button
             transparent
-            class="{!buttonText && '[&]:px-0 [&]:py-3'} grid place-items-center transition-colors {open && '!bg-neutral-400/50'} {buttonClass}"
+            class="{!buttonText && '[&]:px-0 [&]:py-3'} text-xl grid place-items-center transition-colors {open && '!bg-neutral-400/50'} {buttonClass}"
             onclick={toggle}
     >
         {#if buttonText}
             {@html buttonText}
         {:else}
-            <span class="material-symbols-outlined icons-fill text-xl">more_vert</span>
+            <span class="material-symbols-outlined icons-fill">more_vert</span>
         {/if}
     </Button>
 

@@ -71,3 +71,39 @@ export const Snowflake: () => string = (() => {
     return id;
   };
 })();
+
+const EPOCH = 1577836800000; // 2020-01-01
+const SHIFT_BITS = 12 + 10; // sequence + workerId
+
+// divide a decimal string by 2, return { quotient, remainder }
+const divBy2 = (decStr: string) => {
+  let carry = 0;
+  let out = "";
+
+  for (let i = 0; i < decStr.length; i++) {
+    const n = carry * 10 + (decStr.charCodeAt(i) - 48);
+    const q = (n / 2) | 0;
+    carry = n % 2;
+    if (out !== "" || q !== 0) out += q;
+  }
+
+  return {
+    quotient: out === "" ? "0" : out,
+    remainder: carry
+  };
+};
+
+// right-shift a decimal string by `bits`
+const shiftRight = (decStr: string, bits: number) => {
+  let result = decStr;
+  for (let i = 0; i < bits; i++) {
+    result = divBy2(result).quotient;
+  }
+  return result;
+};
+
+export const snowflakeToDate = (id: string): Date => {
+  const timePart = shiftRight(id, SHIFT_BITS);
+  const timestamp = EPOCH + Number(timePart);
+  return new Date(timestamp);
+};

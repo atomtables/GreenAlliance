@@ -1,0 +1,478 @@
+<script lang="ts">
+    import { confirm, prompt } from "$lib/components/Dialog.svelte";
+    import IconButton from "$lib/components/IconButton.svelte";
+    import Spinner from "$lib/components/Spinner.svelte";
+    import { snowflakeToDate } from "$lib/functions/Snowflake.js";
+    import type { Chat, Message } from "$lib/types/messages";
+    import { onDestroy, onMount, tick } from "svelte";
+    import { flip } from "svelte/animate";
+    import { scale, slide } from "svelte/transition";
+
+    let { data } = $props();
+    let conn: EventSource | null = $state(null);
+
+    let chats: Chat[] = $state(null);
+
+    let currentlySelectedChatId = $state<string>(null);
+    let currentlySelectedChat: Chat = $derived.by(() => {
+        if (currentlySelectedChatId == null || chats == null) return null;
+        return chats.find((chat: Chat) => chat.id === currentlySelectedChatId) || null;
+    });
+
+    const updateChatLists = (chatId: string, message: Message) => {
+        const chat = chats.find((v) => v.id == chatId);
+        if (chat) {
+            chat.lastMessage = message;
+        }
+        chats = [chat, ...chats.filter((v) => v.id != chat.id)];
+    };
+
+    const connectToChat = () => {
+        conn?.close();
+        const source = new EventSource(`/api/messages/stream`);
+        conn = source;
+
+        const logEvent = (label: string) => (event: MessageEvent) => {
+            console.log(`[SSE:${label}]`, event.data);
+        };
+
+        source.addEventListener("open", () => {
+            console.log("[SSE] connection open");
+        });
+
+        source.addEventListener("error", (event) => {
+            console.error("[SSE] error", event);
+        });
+
+        source.addEventListener("message", async (ev) => {
+            console.log("[SSE:message]", ev.data);
+            const msg: Message = JSON.parse(ev.data).message;
+            if (messages[msg.chatId]) {
+                messages[msg.chatId] = [...messages[msg.chatId], msg];
+            }
+            const chat = chats.find((v) => v.id == msg.chatId);
+            if (chat) {
+                chat.lastMessage = msg;
+            }
+            if (currentlySelectedChatId === msg.chatId) {
+                updateChatLists(msg.chatId, msg);
+                // scroll to bottom if at bottom
+                if (atBottom) {
+                    await tick();
+                    const container = document.querySelector(".flex-1.overflow-auto.p-5");
+                    container.scrollTop = container.scrollHeight;
+                }
+            }
+        });
+        source.addEventListener("session", logEvent("session"));
+        source.addEventListener("presence", logEvent("presence"));
+        source.addEventListener("historical-messages", logEvent("historical"));
+        source.addEventListener("message-deleted", async (ev) => {
+            console.log("[SSE:message-deleted]", ev.data);
+            const { messageId, chatId } = JSON.parse(ev.data);
+            if (messages[chatId]) {
+                messages[chatId] = messages[chatId].filter((m) => m.id !== messageId);
+            }
+            if (chats.find((v) => v.id == chatId)?.lastMessage?.id === messageId) {
+                const chat = chats.find((v) => v.id == chatId);
+                chat!.lastMessage = null;
+            }
+        });
+        source.addEventListener("message-edited", async (ev) => {
+            console.log("[SSE:message-edited]", ev.data);
+            const { message, chatId } = JSON.parse(ev.data);
+            if (messages[chatId]) {
+                messages[chatId] = messages[chatId].map((v) => {
+                    if (v.id !== message.id) return v;
+                    else return message;
+                });
+            }
+            if (chats.find((v) => v.id == chatId)?.lastMessage?.id === message.id) {
+                const chat = chats.find((v) => v.id == chatId);
+                chat!.lastMessage = message;
+            }
+        });
+    };
+
+    const closeMenusOnClick = (event: MouseEvent) => {
+        const target = event.target as HTMLElement;
+        if (!target.closest("[data-menu-container]")) {
+            openMenuForMessage = null;
+        }
+    };
+
+    onMount(async () => {
+        chats = await data.chats;
+        currentlySelectedChatId = chats[0]?.id || null;
+        connectToChat();
+
+        document.addEventListener("click", closeMenusOnClick);
+    });
+
+    let messages = $state<{ [chatId: string]: Message[] }>({});
+    let openMenuForMessage: string | null = $state(null);
+    let menuOpensUp: Record<string, boolean> = $state({});
+    $effect(() => {
+        if (currentlySelectedChatId && !messages[currentlySelectedChatId])
+            (async () => {
+                const res = await fetch(`/api/messages/${currentlySelectedChatId}`);
+                if (res.ok) {
+                    messages[currentlySelectedChatId] = await res.json();
+                }
+                if (atBottom) {
+                    await tick();
+                    const container = document.querySelector(".flex-1.overflow-auto.p-5");
+                    container.scrollTop = container.scrollHeight;
+                }
+            })();
+    });
+
+    let atBottom = $state(true);
+    const handleScroll = (event: Event) => {
+        const target = event.target as HTMLElement;
+        const threshold = 20; // pixels from the bottom to consider "at bottom"
+        atBottom = target.scrollHeight - target.scrollTop - target.clientHeight <= threshold;
+    };
+
+    onDestroy(() => {
+        conn?.close();
+        // document.removeEventListener("click", closeMenusOnClick);
+    });
+
+    const toTitleCase = (str: string) => {
+        return str
+            .toLowerCase()
+            .split(" ")
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(" ");
+    };
+
+    const isTailMessage = (messagesForChat: Message[], index: number) => {
+        if (index === messagesForChat.length - 1) return true;
+        const current = messagesForChat[index];
+        const next = messagesForChat[index + 1];
+        if (!next) return true;
+        if (next.author !== current.author) return true;
+        const currentTs = snowflakeToDate(current.id);
+        const nextTs = snowflakeToDate(next.id);
+        if (!currentTs || !nextTs) return next.author !== current.author;
+        const diffMs = nextTs.getTime() - currentTs.getTime();
+        const sixtyMinutes = 60 * 60 * 1000;
+        return diffMs > sixtyMinutes;
+    };
+
+    const formatDate = (date: Date): string => {
+        const now = new Date();
+
+        const isSameDay = date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate();
+
+        if (isSameDay) {
+            return date.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+            });
+        }
+
+        return date.toLocaleString([], {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+    };
+
+    let newMessage: string = $state("");
+    const sendMessage = async () => {
+        if (!newMessage.trim() || !currentlySelectedChatId) return;
+
+        let formData = new FormData();
+        formData.append("content", newMessage.trim());
+
+        const res = await fetch(`/api/messages/${currentlySelectedChatId}`, {
+            method: "POST",
+            body: formData,
+        });
+
+        if (res.ok) {
+            const sentMessage: Message = (await res.json()).message;
+            messages[currentlySelectedChatId] = [...(messages[currentlySelectedChatId] || []), sentMessage];
+            updateChatLists(currentlySelectedChatId, sentMessage);
+            newMessage = "";
+            if (atBottom) {
+                await tick();
+                const container = document.querySelector(".flex-1.overflow-auto.p-5");
+                container.scrollTop = container.scrollHeight;
+            }
+        } else {
+            console.error("Failed to send message:", res.statusText);
+        }
+    };
+
+    const editMessage = async (message: Message) => {
+        const newContent = (await prompt("Edit message", message.content, { startingValue: message.content, promptValue: "Edit message" }))?.trim();
+        if (!newContent || newContent === message.content) return;
+
+        const formData = new FormData();
+        formData.append("messageId", message.id);
+        formData.append("content", newContent);
+
+        const res = await fetch(`/api/messages/${message.chatId}`, {
+            method: "PATCH",
+            body: formData,
+        });
+
+        if (res.ok) {
+            messages[message.chatId] = messages[message.chatId].map((m) => (m.id === message.id ? { ...m, content: newContent, edited: true } : m));
+        } else {
+            console.error("Failed to edit message:", res.statusText);
+        }
+        openMenuForMessage = null;
+    };
+
+    const deleteMessage = async (message: Message) => {
+        const stamp = snowflakeToDate(message.id);
+        let yes = await confirm("Delete Message", "Are you sure you want to delete this message?", {
+            children: `
+                    <div class="self-end max-w-xs flex flex-col items-end gap-1 group">
+                        <div class="flex items-end gap-2 relative">
+                            <div class="relative bg-green-600 text-white p-3 shadow-md break-words rounded-md">
+                                ${message.content}
+                                <div class="absolute -right-2 bottom-0 w-0 h-0 border-solid border-t-[15px] border-t-transparent border-l-[15px] border-l-green-600"></div>
+                            </div>
+                            <img src=${data.user?.avatar || "/noprofile.png"} alt="avatar" class="w-7 h-7 rounded-full bg-gray-500 mb-1" />
+                        </div>
+                        <div class="text-[11px] text-white/80 pr-1">You • ${formatDate(stamp)}</div>
+                    </div>
+                `,
+            isSnippet: false,
+        });
+        if (!yes) return;
+
+        const formData = new FormData();
+        formData.append("messageId", message.id);
+
+        const res = await fetch(`/api/messages/${message.chatId}`, {
+            method: "DELETE",
+            body: formData,
+        });
+
+        if (res.ok) {
+            messages[message.chatId] = messages[message.chatId].filter((m) => m.id !== message.id);
+        } else {
+            console.error("Failed to delete message:", res.statusText);
+        }
+        openMenuForMessage = null;
+    };
+</script>
+
+<div class="w-full h-full lg:p-10">
+    <div class="w-full h-full flex flex-row flex-nowrap border-gray-600">
+        <div class="shadow-[25px_-5px_20px_-12px_rgb(0_0_0_/_0.25)] w-64 lg:w-96 bg-gray-600 shrink-0">
+            <div class="w-full bg-green-700 font-bold text-xl flex justify-between items-center py-2 shadow-2xl">
+                <div class="px-4">CHATS</div>
+                <div class="flex flex-row gap-2">
+                    <IconButton onclick={() => null}><span class="material-symbols-outlined icons-fill">add</span></IconButton>
+                </div>
+            </div>
+            {#if chats == null}
+                <div class="w-full flex justify-center items-center p-5 gap-2 font-bold text-lg">
+                    <Spinner />
+                </div>
+            {:else if chats.length === 0}
+                <div class="w-full flex justify-center items-center p-5 gap-2 font-bold text-lg text-gray-300">No chats available.</div>
+            {:else}
+                {#each chats.filter((v) => v) as chat, ind}
+                    <button
+                        onclick={() => {
+                            currentlySelectedChatId = chat.id;
+                        }}
+                        class="block grow w-full {chat.id === currentlySelectedChatId ? 'bg-neutral-500/50' : 'hover:bg-neutral-500/25 active:bg-neutral-500/50'} font-bold py-5 px-2 text-lg flex items-center gap-2 transition-all"
+                    >
+                        <span class="material-symbols-outlined icons-fill text-xl -translate-y-0.25 pl-5 pr-5">person</span>
+                        <div class="flex flex-col items-start text-left -space-y-1">
+                            <div>
+                                {#if chat.isGroup}
+                                    {chat.name}
+                                {:else}
+                                    {#await data.users}
+                                        <span>Loading...</span>
+                                    {:then users}
+                                        {@const other = chat.participantIds.find((id) => id !== data.user.id)}
+                                        {@const user = users.find((u) => u.id === other)}
+                                        {@const name = user ? `${user.firstName} ${user.lastName}` : "Unknown User"}
+                                        {toTitleCase(name)}
+                                    {/await}
+                                {/if}
+                            </div>
+                            <div>
+                                {#if chat.lastMessage}
+                                    <span class="text-sm font-normal text-gray-300">
+                                        {#if !chat.isGroup}
+                                            {#if chat.lastMessage.author === data.user.id}
+                                                You:
+                                            {/if}
+                                        {:else}
+                                            {#await data.users}
+                                                <span>Loading...</span>
+                                            {:then users}
+                                                {@const author = users.find((u) => u.id === chat.lastMessage.author)}
+                                                {@const authorName = author ? `${author.firstName}` : "Unknown"}
+                                                {toTitleCase(authorName)}:
+                                            {/await}
+                                        {/if}
+                                        {chat.lastMessage.content.slice(0, 30)}{chat.lastMessage.content.length > 30 ? "..." : ""}
+                                    </span>
+                                {:else}
+                                    <span class="text-sm font-normal text-gray-300">Nothing new yet</span>
+                                {/if}
+                            </div>
+                        </div>
+                    </button>
+                {/each}
+            {/if}
+        </div>
+        <div class="bg-gray-600/50 flex-1 grow-1 overflow-auto">
+            {#await data.users then users}
+                {@const chat = currentlySelectedChat}
+                {#if chat != null}
+                    {@const other = chat.participantIds.find((id) => id !== data.user.id)}
+                    {@const user = users.find((u) => u.id === other)}
+                    {@const name = user ? `${user.firstName} ${user.lastName}` : "Unknown User"}
+                    <div class="flex flex-col gap-0 inset-0 h-full">
+                        <div class="w-full bg-green-700 font-medium text-xl flex justify-between items-center p-2 shadow-2xl">
+                            <div class="px-2">
+                                {toTitleCase(name)}
+                            </div>
+                            <div class="flex flex-row gap-2">
+                                {#if user.phone}
+                                    <IconButton onclick={() => (window.location.href = `tel:${user.phone}`)}>
+                                        <span class="material-symbols-outlined icons-fill">phone</span>
+                                    </IconButton>
+                                {/if}
+                                <IconButton onclick={() => (window.location.href = `mailto:${user.email}`)}><span class="material-symbols-outlined icons-fill">email</span></IconButton>
+                                <IconButton onclick={() => null}><span class="material-symbols-outlined icons-fill">account_circle</span></IconButton>
+                            </div>
+                        </div>
+                        <div class="flex-1 overflow-auto p-5">
+                            {#if !messages[chat.id]}
+                                <div class="w-full flex justify-center items-center p-5 gap-2 font-bold text-lg">
+                                    <Spinner />
+                                </div>
+                            {:else if messages[chat.id].length === 0}
+                                <div class="w-full flex justify-center items-center p-5 gap-2 font-bold text-lg text-gray-300">No messages yet. Say hello!</div>
+                            {:else}
+                                <div class="flex flex-col gap-1 w-full">
+                                    {#each messages[chat.id] as message, i (message.id)}
+                                        {@const tail = isTailMessage(messages[chat.id], i)}
+                                        {@const stamp = snowflakeToDate(message.id)}
+                                        <span animate:flip style="display: contents;">
+                                            {#if message.author === data.user.id}
+                                                <div class="w-full self-end max-w-xs flex flex-col items-end gap-1 group" data-menu-container>
+                                                    <div class="flex items-end gap-2 relative">
+                                                        <div class="relative inline-block self-center">
+                                                            <IconButton
+                                                                onclick={() => {
+                                                                    openMenuForMessage = openMenuForMessage === message.id ? null : message.id;
+                                                                }}
+                                                                transparent
+                                                                class="self-center !p-0 grid place-items-center {openMenuForMessage === message.id ? 'opacity-100 bg-neutral-400/50 hover:bg-neutral-400/50' : 'opacity-0'} group-hover:opacity-100 transition duration-150 ease-out"
+                                                            >
+                                                                more_vert
+                                                            </IconButton>
+
+                                                            {#if openMenuForMessage === message.id}
+                                                                <div class="absolute left-2 z-50 {i === messages[chat.id].length - 1 && 'bottom-full'} py-1 min-w-max overflow-hidden bg-gray-800 shadow-md rounded-md rounded-tl-none" transition:slide={{ duration: 150 }}>
+                                                                    <button class="block w-full text-left px-4 py-2 text-sm hover:bg-neutral-500/40 active:bg-neutral-400/40 transition-colors" onclick={() => editMessage(message)}> Edit </button>
+                                                                    <button class="block w-full text-left px-4 py-2 text-sm hover:bg-neutral-500/40 active:bg-neutral-400/40 transition-colors" onclick={() => deleteMessage(message)}> Delete </button>
+                                                                </div>
+                                                            {/if}
+                                                        </div>
+                                                        <div class="relative bg-green-600 text-white p-3 shadow-md break-words rounded-md">
+                                                            {message.content}
+                                                            {#if tail}
+                                                                <div class="absolute -right-2 bottom-0 w-0 h-0 border-solid border-t-[15px] border-t-transparent border-l-[15px] border-l-green-600"></div>
+                                                            {/if}
+                                                            {#if message.edited}
+                                                                <div class="text-[0.625rem] text-white/70 italic pt-0.5 select-none">Edited</div>
+                                                            {/if}
+                                                        </div>
+                                                        {#if tail}
+                                                            <img src={data.user?.avatar || "/noprofile.png"} alt="avatar" class="w-7 h-7 rounded-full bg-gray-500 mb-1" />
+                                                        {:else}
+                                                            <div class="w-7 h-7"></div>
+                                                        {/if}
+                                                    </div>
+                                                    {#if tail}
+                                                        <div class="text-[11px] text-white/80 pr-1">You • {formatDate(stamp)}</div>
+                                                    {/if}
+                                                </div>
+                                            {:else}
+                                                <div class="self-start max-w-xs flex flex-col items-start gap-1 group" data-menu-container>
+                                                    <div class="flex items-end gap-2">
+                                                        {#if tail}
+                                                            <img src={user?.avatar || "/noprofile.png"} alt="avatar" class="w-7 h-7 rounded-full bg-gray-500 mb-1" />
+                                                        {:else}
+                                                            <div class="w-7 h-7"></div>
+                                                        {/if}
+                                                        <div class="flex flex-col">
+                                                            <div class="relative bg-gray-600 text-white p-3 shadow-md break-words rounded-md">
+                                                                {message.content}
+                                                                {#if tail}
+                                                                    <div class="absolute -left-2 bottom-0 w-0 h-0 border-solid border-t-[15px] border-t-transparent border-r-[15px] border-r-gray-600"></div>
+                                                                {/if}
+                                                                {#if message.edited}
+                                                                    <div class="text-[0.625rem] text-white/70 italic pt-0.5 select-none">Edited</div>
+                                                                {/if}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    {#if tail}
+                                                        <div class="text-[11px] text-gray-200/90 pl-1">{toTitleCase(user.firstName)} • {formatDate(stamp)}</div>
+                                                    {/if}
+                                                </div>
+                                            {/if}
+                                        </span>
+                                    {/each}
+                                </div>
+                            {/if}
+                        </div>
+                        <div>
+                            <div class="w-full bg-gray-700 p-2 flex flex-row gap- items-center">
+                                <IconButton onclick={() => null} transparent>
+                                    <span class="material-symbols-outlined icons-fill">emoji_emotions</span>
+                                </IconButton>
+                                <div class="relative flex-1 group -mt-1.5">
+                                    <input bind:value={newMessage} type="text" placeholder="Type a message..." class="w-full bg-gray-700 text-white px-2 pt-2 pb-1 placeholder-gray-300 border-0 focus:outline-none focus:ring-0 focus:border-transparent" />
+                                    <div class="absolute left-2 right-2 bottom-0 h-px bg-gray-600"></div>
+                                    <div class="absolute left-2 right-2 bottom-0 h-0.5 bg-green-400 scale-x-0 group-focus-within:scale-x-100 transition-transform duration-200 origin-left"></div>
+                                </div>
+                                <IconButton onclick={() => sendMessage()} transparent>
+                                    <span class="material-symbols-outlined icons-fill">send</span>
+                                </IconButton>
+                            </div>
+                        </div>
+                    </div>
+                {/if}
+            {/await}
+        </div>
+    </div>
+</div>
+
+<style>
+    @keyframes menu-pop {
+        from {
+            opacity: 0;
+            transform: translateY(-4px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    .menu-pop {
+        animation: menu-pop 150ms ease-out;
+        transform-origin: top left;
+    }
+</style>

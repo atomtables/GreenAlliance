@@ -141,12 +141,14 @@
                         let value = await confirm(
                             "Delete Join Codes",
                             "Are you sure you want to delete these join codes?",
-                            `<div>
-                            <b class="text-xl">${selected.map((e) => activeJoinCodes[e].joinCode).join(", ")}</b>
-                            <br>
-                            <div>These join codes will be invalidated and will not be able to create a new account.</div>
-                        </div>`,
-                            false,
+                            {
+                                children: `<div>
+                                    <b class="text-xl">${selected.map((e) => activeJoinCodes[e].joinCode).join(", ")}</b>
+                                    <br>
+                                    <div>These join codes will be invalidated and will not be able to create a new account.</div>
+                                </div>`,
+                                isSnippet: false,
+                            }
                         );
                         if (!value) return;
                         const promise = (async () => {

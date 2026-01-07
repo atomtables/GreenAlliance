@@ -89,7 +89,7 @@
 </Dialog>
 
 <div class="w-full h-full p-10">
-    <div class="bg-slate-600 w-full h-full flex flex-col overflow-y-scroll">
+    <div class="bg-slate-600 w-full h-full flex flex-col overflow-y-auto">
         <div class="font-bold text-2xl px-5 pt-5 flex flex-row flex-nowrap gap-2 justify-between items-center">
             <span>
                 {today.toMonthString()} {today.getFullYear()}
