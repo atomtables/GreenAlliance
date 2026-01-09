@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { confirm, prompt } from "$lib/components/Dialog.svelte";
+    import { confirm, prompt, alert } from "$lib/components/Dialog.svelte";
     import IconButton from "$lib/components/IconButton.svelte";
     import Spinner from "$lib/components/Spinner.svelte";
     import { snowflakeToDate } from "$lib/functions/Snowflake.js";
@@ -9,8 +9,8 @@
     import { scale, slide } from "svelte/transition";
 
     let { data } = $props();
-    let conn: EventSource | null = $state(null);
 
+    let conn: EventSource | null = $state(null);
     let chats: Chat[] = $state(null);
 
     let currentlySelectedChatId = $state<string>(null);
@@ -19,12 +19,27 @@
         return chats.find((chat: Chat) => chat.id === currentlySelectedChatId) || null;
     });
 
+    const updateLastReadForChat = (chatId: string, messageId: string) => {
+        let chat = chats.find((v) => v.id == chatId);
+        let message = messages[chatId]?.find((m) => m.id === messageId);
+        if (!message) return;
+        fetch(`/api/messages/${chatId}?messageId=${messageId}`, {
+            method: "HEAD",
+        }).then(res => {
+            console.log("Marked messages as read on focus:", res.status);
+            if (res.ok) {
+                chat!.readReceipts.count = res.headers.get('X-Unread-Messages') ? parseInt(res.headers.get('X-Unread-Messages')) : 0;
+                chat!.readReceipts.messageId = res.headers.get('X-Last-Message-Id') || messageId;
+            }
+        });
+    };
+
     const updateChatLists = (chatId: string, message: Message) => {
         const chat = chats.find((v) => v.id == chatId);
         if (chat) {
             chat.lastMessage = message;
+            chats = [chat, ...chats.filter((v) => v.id != chat.id)];
         }
-        chats = [chat, ...chats.filter((v) => v.id != chat.id)];
     };
 
     const connectToChat = () => {
@@ -62,11 +77,17 @@
                     const container = document.querySelector(".flex-1.overflow-auto.p-5");
                     container.scrollTop = container.scrollHeight;
                 }
+                if (document.hasFocus()) {
+                    updateLastReadForChat(msg.chatId, msg.id);
+                } else {
+                    
+                }
+            } else {
+                chat!.readReceipts.count += 1;
             }
         });
         source.addEventListener("session", logEvent("session"));
         source.addEventListener("presence", logEvent("presence"));
-        source.addEventListener("historical-messages", logEvent("historical"));
         source.addEventListener("message-deleted", async (ev) => {
             console.log("[SSE:message-deleted]", ev.data);
             const { messageId, chatId } = JSON.parse(ev.data);
@@ -103,7 +124,7 @@
 
     onMount(async () => {
         chats = await data.chats;
-        currentlySelectedChatId = chats[0]?.id || null;
+        // currentlySelectedChatId = chats[0]?.id || null;
         connectToChat();
 
         document.addEventListener("click", closeMenusOnClick);
@@ -118,21 +139,42 @@
                 const res = await fetch(`/api/messages/${currentlySelectedChatId}`);
                 if (res.ok) {
                     messages[currentlySelectedChatId] = await res.json();
+                } else {
+                    alert("Error", `Failed to load messages: ${res.statusText}`);
+                    currentlySelectedChatId = null;
                 }
+                await tick();
+                const container = document.querySelector(".flex-1.overflow-auto.p-5");
                 if (atBottom) {
-                    await tick();
-                    const container = document.querySelector(".flex-1.overflow-auto.p-5");
                     container.scrollTop = container.scrollHeight;
+                }
+                if (document.hasFocus()) {
+                    let chat = currentlySelectedChat;
+                    let message = messages[currentlySelectedChatId]?.findLast((v) => v);
+                    chat!.readReceipts.count = 0;
+                    chat!.readReceipts.messageId = message.id;
+                    fetch(`/api/messages/${currentlySelectedChatId}?messageId=${message.id}`, {
+                        method: "HEAD",
+                    });
                 }
             })();
     });
 
+    function pageRegainsFocus() {
+        if (currentlySelectedChatId && atBottom) {
+            let chat = currentlySelectedChat;
+            let message = messages[currentlySelectedChatId]?.findLast((v) => v);
+            if (chat && message) {
+                updateLastReadForChat(currentlySelectedChatId, message.id);
+            }
+        }
+    }
+
+    $effect(() => {
+        if (atBottom && document.hasFocus()) pageRegainsFocus();
+    });
+
     let atBottom = $state(true);
-    const handleScroll = (event: Event) => {
-        const target = event.target as HTMLElement;
-        const threshold = 20; // pixels from the bottom to consider "at bottom"
-        atBottom = target.scrollHeight - target.scrollTop - target.clientHeight <= threshold;
-    };
 
     onDestroy(() => {
         conn?.close();
@@ -259,12 +301,18 @@
 
         if (res.ok) {
             messages[message.chatId] = messages[message.chatId].filter((m) => m.id !== message.id);
+            const chat = chats.find((v) => v.id == message.chatId);
+            if (chat?.lastMessage?.id === message.id) {
+                chat.lastMessage = null;
+            }
         } else {
             console.error("Failed to delete message:", res.statusText);
         }
         openMenuForMessage = null;
     };
 </script>
+
+<svelte:window on:focus={pageRegainsFocus} />
 
 <div class="w-full h-full lg:p-10">
     <div class="w-full h-full flex flex-row flex-nowrap border-gray-600">
@@ -287,52 +335,64 @@
                         onclick={() => {
                             currentlySelectedChatId = chat.id;
                         }}
-                        class="block grow w-full {chat.id === currentlySelectedChatId ? 'bg-neutral-500/50' : 'hover:bg-neutral-500/25 active:bg-neutral-500/50'} font-bold py-5 px-2 text-lg flex items-center gap-2 transition-all"
+                        class="block grow w-full {chat.id === currentlySelectedChatId ? 'bg-neutral-500/50' : 'hover:bg-neutral-500/25 active:bg-neutral-500/50'} font-bold py-5 px-2 text-lg flex items-center justify-between gap-2 transition-all"
                     >
-                        <span class="material-symbols-outlined icons-fill text-xl -translate-y-0.25 pl-5 pr-5">person</span>
-                        <div class="flex flex-col items-start text-left -space-y-1">
-                            <div>
-                                {#if chat.isGroup}
-                                    {chat.name}
-                                {:else}
-                                    {#await data.users}
-                                        <span>Loading...</span>
-                                    {:then users}
-                                        {@const other = chat.participantIds.find((id) => id !== data.user.id)}
-                                        {@const user = users.find((u) => u.id === other)}
-                                        {@const name = user ? `${user.firstName} ${user.lastName}` : "Unknown User"}
-                                        {toTitleCase(name)}
-                                    {/await}
-                                {/if}
-                            </div>
-                            <div>
-                                {#if chat.lastMessage}
-                                    <span class="text-sm font-normal text-gray-300">
-                                        {#if !chat.isGroup}
-                                            {#if chat.lastMessage.author === data.user.id}
-                                                You:
+                        <div class="flex flex-row items-center gap-2">
+                            <img src="/noprofile.png" alt="avatar" class="h-10 px-2 rounded-full" />
+                            <div class="flex flex-col items-start justify-evenly text-left -space-y-1">
+                                <div class="overflow-clip line-clamp-1">
+                                    {#if chat.isGroup}
+                                        {chat.name}
+                                    {:else}
+                                        {#await data.users}
+                                            <span>Loading...</span>
+                                        {:then users}
+                                            {@const other = chat.participantIds.find((id) => id !== data.user.id)}
+                                            {@const user = users.find((u) => u.id === other)}
+                                            {@const name = user ? `${user.firstName} ${user.lastName}` : "Unknown User"}
+                                            {toTitleCase(name)}
+                                        {/await}
+                                    {/if}
+                                </div>
+                                <div>
+                                    {#if chat.lastMessage}
+                                        <span class="text-sm font-normal text-gray-300 overflow-clip line-clamp-1">
+                                            {#if !chat.isGroup}
+                                                {#if chat.lastMessage.author === data.user.id}
+                                                    You:
+                                                {/if}
+                                            {:else}
+                                                {#await data.users}
+                                                    <span>Loading...</span>
+                                                {:then users}
+                                                    {@const author = users.find((u) => u.id === chat.lastMessage.author)}
+                                                    {@const authorName = author ? `${author.firstName}` : "Unknown"}
+                                                    {toTitleCase(authorName)}:
+                                                {/await}
                                             {/if}
-                                        {:else}
-                                            {#await data.users}
-                                                <span>Loading...</span>
-                                            {:then users}
-                                                {@const author = users.find((u) => u.id === chat.lastMessage.author)}
-                                                {@const authorName = author ? `${author.firstName}` : "Unknown"}
-                                                {toTitleCase(authorName)}:
-                                            {/await}
-                                        {/if}
-                                        {chat.lastMessage.content.slice(0, 30)}{chat.lastMessage.content.length > 30 ? "..." : ""}
-                                    </span>
-                                {:else}
-                                    <span class="text-sm font-normal text-gray-300">Nothing new yet</span>
-                                {/if}
+                                            {chat.lastMessage.content.slice(0, 30)}{chat.lastMessage.content.length > 30 ? "..." : ""}
+                                        </span>
+                                    {:else}
+                                        <span class="text-sm font-normal text-gray-300">Nothing new yet</span>
+                                    {/if}
+                                </div>
                             </div>
                         </div>
+                        {#if chat.readReceipts.count > 0}
+                            <div class="text-white bg-green-600 grid place-items-center aspect-square w-5 text-xs m-1 rounded-full">{chat.readReceipts.count}</div>
+                        {/if}
                     </button>
                 {/each}
             {/if}
         </div>
-        <div class="bg-gray-600/50 flex-1 grow-1 overflow-auto">
+        <div
+            class="bg-gray-600/50 flex-1 grow-1 overflow-auto"
+            onscroll={(event: Event) => {
+                const target = event.target as HTMLElement;
+                const threshold = 20; // pixels from the bottom to consider "at bottom"
+                atBottom = target.scrollHeight - target.scrollTop - target.clientHeight <= threshold;
+            }}
+        >
             {#await data.users then users}
                 {@const chat = currentlySelectedChat}
                 {#if chat != null}
@@ -366,7 +426,7 @@
                                     {#each messages[chat.id] as message, i (message.id)}
                                         {@const tail = isTailMessage(messages[chat.id], i)}
                                         {@const stamp = snowflakeToDate(message.id)}
-                                        <span animate:flip style="display: contents;">
+                                        <span animate:flip style="display: contents;" id={"message-" + message.id}>
                                             {#if message.author === data.user.id}
                                                 <div class="w-full self-end max-w-xs flex flex-col items-end gap-1 group" data-menu-container>
                                                     <div class="flex items-end gap-2 relative">

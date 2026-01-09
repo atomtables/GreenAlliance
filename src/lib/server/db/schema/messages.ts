@@ -8,6 +8,7 @@ import { relations } from "drizzle-orm";
 import { pgTable, serial, varchar, integer, text, timestamp, uniqueIndex, boolean, index, primaryKey} from "drizzle-orm/pg-core";
 import { users } from "./users";
 import { json } from "./common";
+import { read } from "fs";
 
 export const messages = pgTable("messages", {
     // Snowflake ID (so includes timestamp)
@@ -55,6 +56,7 @@ export const chatParticipants = pgTable("chat_participants", {
 export const chatsRelations = relations(chats, ({ many }) => ({
     participants: many(chatParticipants),
     messages: many(messages),
+    readReceipts: many(messagesReadReceipts),
 }));
 
 export const chatParticipantsRelations = relations(chatParticipants, ({ one }) => ({
@@ -68,7 +70,7 @@ export const chatParticipantsRelations = relations(chatParticipants, ({ one }) =
     }),
 }));
 
-export const messagesRelations = relations(messages, ({ one }) => ({
+export const messagesRelations = relations(messages, ({ one, many }) => ({
     chat: one(chats, {
         fields: [messages.chatId],
         references: [chats.id],
@@ -76,5 +78,30 @@ export const messagesRelations = relations(messages, ({ one }) => ({
     authorUser: one(users, {
         fields: [messages.author],
         references: [users.id],
+    }),
+}));
+
+export const messagesReadReceipts = pgTable("message_read_receipts", {
+    messageId: varchar("message_id", { length: 21 }).notNull().references(() => messages.id),
+    userId: varchar("user_id", { length: 36 }).notNull().references(() => users.id),
+    chatId: varchar("chat_id", { length: 21 }).notNull().references(() => chats.id),
+}, (table) => [
+    primaryKey({ columns: [table.userId, table.chatId] }),
+    index("message_read_receipts_user_idx").on(table.userId),
+    index("message_read_receipts_chat_idx").on(table.chatId),
+]);
+
+export const messagesReadReceiptsRelations = relations(messagesReadReceipts, ({ one }) => ({
+    message: one(messages, {
+        fields: [messagesReadReceipts.messageId],
+        references: [messages.id],
+    }),
+    user: one(users, {
+        fields: [messagesReadReceipts.userId],
+        references: [users.id],
+    }),
+    chat: one(chats, {
+        fields: [messagesReadReceipts.chatId],
+        references: [chats.id],
     }),
 }));

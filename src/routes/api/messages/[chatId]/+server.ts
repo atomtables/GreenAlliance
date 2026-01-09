@@ -4,10 +4,54 @@ import { messages } from "$lib/server/db/schema";
 import { normaliseChatFromDatabase, normaliseMessageFromDatabase, type Message } from "$lib/types/messages";
 import { Permission } from "$lib/types/types";
 import type { RequestHandler } from "@sveltejs/kit";
-import { and, desc, eq, lt, ne, sql } from "drizzle-orm";
+import { and, count, desc, eq, gt, lt, ne, sql } from "drizzle-orm";
 import { produce } from 'sveltekit-sse'
 import { _clients as clients } from "../stream/+server";
+import { messagesReadReceipts } from "$lib/server/db/schema/messages";
 
+// handler for the user to set which message they have read up to in this chat
+export const HEAD: RequestHandler = async ({ request, params, locals }) => {
+    if (!RequiresPermissions(locals, [Permission.message])) {
+        return new Response(null, { status: 401 });
+    }
+    let messageId = new URL(request.url).searchParams.get("messageId");
+    if (!messageId) {
+        console.log(`${request.url}: Missing messageId in read receipt update: ${new URLSearchParams(request.url).get("messageId")}`);
+        return new Response(null, { status: 400 });
+    }
+
+    try {
+        // upsert the read receipt
+        await db.insert(messagesReadReceipts).values({
+            messageId,
+            userId: locals.user.id,
+            chatId: params.chatId
+        }).onConflictDoUpdate({
+            target: [messagesReadReceipts.userId, messagesReadReceipts.chatId],
+            set: {
+                messageId,
+            }
+        });
+    } catch (e) {
+        console.error(`${request.url}: Error updating read receipt: `, e);
+        return new Response(null, { status: 500 });
+    }
+
+    console.debug(`${request.url}: Updated read receipt to message ${messageId} for user ${locals.user.id} in chat ${params.chatId}, there are now ${
+        (await db.select().from(messages).where(() => and(
+                                eq(messages.chatId, params.chatId),
+                                gt(messages.id, messageId || "0"),
+                                ne(messages.deleted, true)
+                            )))
+    } unread messages.`);
+    console.log(await db.select().from(messages).where(() => and(
+        eq(messages.chatId, params.chatId),
+        gt(messages.id, messageId || "0"),
+        ne(messages.deleted, true)
+    )))
+
+    return new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store', 'X-Unread-Messages': new String(0).toString(), 'X-Last-Message-Id': messageId } });
+}
 
 // handler to get historical messages for a specified chat id
 // if "before" is provided, returns up to 50 messages before that id (chronological)
@@ -52,7 +96,12 @@ export const POST: RequestHandler = async ({ request, locals, params }) => {
         return new Response(JSON.stringify({ error: "Insufficient permissions" }), { status: 401 });
     }
 
-    let formData = await request.formData();
+    let formData: FormData;
+    try {
+        formData = await request.formData();
+    } catch (e) {
+        return new Response(JSON.stringify({ error: "Invalid form data" }), { status: 400 });
+    }
     let chatId = params.chatId;
     let content = formData.get("content") as string;
     if (!chatId || !content) {

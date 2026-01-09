@@ -1,13 +1,13 @@
 // This handles the creation and getting of
 // new chats between people
 
-import { messages, chats, chatParticipants, users } from "$lib/server/db/schema";
+import { messages, chats, chatParticipants, users, messagesReadReceipts } from "$lib/server/db/schema";
 import type { RequestHandler } from "@sveltejs/kit";
 import { db } from "$lib/server/db/index";
 import { normaliseChatFromDatabase, type Chat, type Message } from "$lib/types/messages";
 import { RequiresPermissions } from "$lib/functions/requirePermissions";
 import { Permission, Role, type User } from "$lib/types/types";
-import { desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, inArray, gt, ne } from "drizzle-orm";
 import { cleanUserFromDatabase } from "$lib/server/auth";
 
 // Retrieve all chats for a given user.
@@ -39,6 +39,9 @@ export const GET: RequestHandler = async ({ locals }) => {
                         limit: 1,
                         orderBy: desc(messages.id),
                         where: (msg) => eq(msg.deleted, false),
+                    },
+                    readReceipts: {
+                        where: (rr) => eq(rr.userId, userId)
                     }
                 },
             }
@@ -60,6 +63,11 @@ export const GET: RequestHandler = async ({ locals }) => {
         if (!chat) continue;
         if (chat.archived) continue; // skip archived chats
         const participantIds = chat.participants?.map((p) => p.userId) ?? [];
+        console.log(await db.select().from(messages).where(() => and(
+            eq(messages.chatId, row.chatId),
+            gt(messages.id, chat.readReceipts[0]?.messageId || "0"),
+            ne(messages.deleted, true)
+        )))
         if (!chatMap.has(chat.id)) {
             chatMap.set(chat.id, {
                 id: chat.id,
@@ -67,7 +75,15 @@ export const GET: RequestHandler = async ({ locals }) => {
                 name: chat.name ?? undefined,
                 archived: chat.archived,
                 participantIds,
-                lastMessage: chat.lastMessage ?? null
+                lastMessage: chat.lastMessage ?? null,
+                readReceipts: {
+                    messageId: chat.readReceipts[0]?.messageId || null,
+                    count: (await db.select({ value: count() }).from(messages).where(() => and(
+                        eq(messages.chatId, chat.id),
+                        gt(messages.id, chat.readReceipts[0]?.messageId || "0"),
+                        ne(messages.deleted, true)
+                    )).then(res => res[0].value) & 63) || 0,
+                }
             });
         }
     }
@@ -207,7 +223,8 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
             isGroup: chatInsert.isGroup,
             name: chatInsert.name ?? undefined,
             participantIds: participantIds,
-            lastMessage: null
+            lastMessage: null,
+            readReceipts: null
         };
 
         return new Response(JSON.stringify({ chat: newChat }), { status: 201 });

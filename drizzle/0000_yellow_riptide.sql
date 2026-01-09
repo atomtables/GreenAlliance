@@ -16,6 +16,19 @@ CREATE TABLE "attachments" (
 	"filesize" integer NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "chat_participants" (
+	"chat_id" varchar(21) NOT NULL,
+	"user_id" varchar(36) NOT NULL,
+	CONSTRAINT "chat_participants_chat_id_user_id_pk" PRIMARY KEY("chat_id","user_id")
+);
+--> statement-breakpoint
+CREATE TABLE "chats" (
+	"id" varchar(21) PRIMARY KEY NOT NULL,
+	"is_group" boolean DEFAULT false NOT NULL,
+	"name" text,
+	"archived" boolean DEFAULT false NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "joincodes" (
 	"joinCode" varchar(10) PRIMARY KEY NOT NULL,
 	"role" integer NOT NULL,
@@ -45,13 +58,20 @@ CREATE TABLE "meetings" (
 --> statement-breakpoint
 CREATE TABLE "messages" (
 	"id" varchar(21) PRIMARY KEY NOT NULL,
-	"author" varchar(21) NOT NULL,
+	"author" varchar(36) NOT NULL,
 	"content" text NOT NULL,
 	"chat_id" varchar(21) NOT NULL,
 	"edited" boolean DEFAULT false NOT NULL,
 	"edit_history" jsonb DEFAULT '[]'::jsonb NOT NULL,
 	"deleted" boolean DEFAULT false NOT NULL,
 	"attachments" jsonb DEFAULT '[]'::jsonb NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "message_read_receipts" (
+	"message_id" varchar(21) NOT NULL,
+	"user_id" varchar(36) NOT NULL,
+	"chat_id" varchar(21) NOT NULL,
+	CONSTRAINT "message_read_receipts_user_id_chat_id_pk" PRIMARY KEY("user_id","chat_id")
 );
 --> statement-breakpoint
 CREATE TABLE "session" (
@@ -84,15 +104,24 @@ CREATE TABLE "users" (
 --> statement-breakpoint
 ALTER TABLE "announcements" ADD CONSTRAINT "announcements_author_users_id_fk" FOREIGN KEY ("author") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "attachments" ADD CONSTRAINT "attachments_author_users_id_fk" FOREIGN KEY ("author") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "chat_participants" ADD CONSTRAINT "chat_participants_chat_id_chats_id_fk" FOREIGN KEY ("chat_id") REFERENCES "public"."chats"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "chat_participants" ADD CONSTRAINT "chat_participants_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "joincodes" ADD CONSTRAINT "joincodes_subteam_subteams_name_fk" FOREIGN KEY ("subteam") REFERENCES "public"."subteams"("name") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "meeting_attendees" ADD CONSTRAINT "meeting_attendees_meeting_id_meetings_id_fk" FOREIGN KEY ("meeting_id") REFERENCES "public"."meetings"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "meeting_attendees" ADD CONSTRAINT "meeting_attendees_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "meetings" ADD CONSTRAINT "meetings_user_users_id_fk" FOREIGN KEY ("user") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "messages" ADD CONSTRAINT "messages_author_users_id_fk" FOREIGN KEY ("author") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "messages" ADD CONSTRAINT "messages_chat_id_chats_id_fk" FOREIGN KEY ("chat_id") REFERENCES "public"."chats"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "message_read_receipts" ADD CONSTRAINT "message_read_receipts_message_id_messages_id_fk" FOREIGN KEY ("message_id") REFERENCES "public"."messages"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "message_read_receipts" ADD CONSTRAINT "message_read_receipts_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "message_read_receipts" ADD CONSTRAINT "message_read_receipts_chat_id_chats_id_fk" FOREIGN KEY ("chat_id") REFERENCES "public"."chats"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "session" ADD CONSTRAINT "session_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "users" ADD CONSTRAINT "users_subteam_subteams_name_fk" FOREIGN KEY ("subteam") REFERENCES "public"."subteams"("name") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "announcement_index_author" ON "announcements" USING btree ("author");--> statement-breakpoint
 CREATE INDEX "attachment_index" ON "attachments" USING btree ("author");--> statement-breakpoint
+CREATE INDEX "chat_participants_user_idx" ON "chat_participants" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "message_index_author" ON "messages" USING btree ("author");--> statement-breakpoint
 CREATE INDEX "message_index_chat" ON "messages" USING btree ("chat_id");--> statement-breakpoint
+CREATE INDEX "message_read_receipts_user_idx" ON "message_read_receipts" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "message_read_receipts_chat_idx" ON "message_read_receipts" USING btree ("chat_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "emailUniqueIndex" ON "users" USING btree ("email");

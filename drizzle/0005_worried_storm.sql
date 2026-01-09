@@ -1,1 +1,0 @@
-ALTER TABLE "messages" ALTER COLUMN "author" SET DATA TYPE varchar(36);
