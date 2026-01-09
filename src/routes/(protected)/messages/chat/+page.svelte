@@ -80,7 +80,7 @@
                 if (document.hasFocus()) {
                     updateLastReadForChat(msg.chatId, msg.id);
                 } else {
-                    
+                    chat!.readReceipts.count += 1;
                 }
             } else {
                 chat!.readReceipts.count += 1;
