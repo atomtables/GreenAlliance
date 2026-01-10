@@ -57,6 +57,22 @@
 
         source.addEventListener("error", (event) => {
             console.error("[SSE] error", event);
+            if (source.readyState === EventSource.CLOSED) {
+                console.log("[SSE] connection closed by server, attempting to reconnect in 5 seconds...");
+                setTimeout(() => {
+                    connectToChat();
+                }, 5000);
+            }
+        });
+
+        source.addEventListener("close", () => {
+            console.log("[SSE] connection closed");
+            if (source.readyState === EventSource.CLOSED) {
+                console.log("[SSE] connection closed by server, attempting to reconnect in 5 seconds...");
+                setTimeout(() => {
+                    connectToChat();
+                }, 5000);
+            }
         });
 
         source.addEventListener("message", async (ev) => {
@@ -101,15 +117,15 @@
         });
         source.addEventListener("message-edited", async (ev) => {
             console.log("[SSE:message-edited]", ev.data);
-            const { message, chatId } = JSON.parse(ev.data);
-            if (messages[chatId]) {
-                messages[chatId] = messages[chatId].map((v) => {
+            const { message } = JSON.parse(ev.data);
+            if (messages[message.chatId]) {
+                messages[message.chatId] = messages[message.chatId].map((v) => {
                     if (v.id !== message.id) return v;
                     else return message;
                 });
             }
-            if (chats.find((v) => v.id == chatId)?.lastMessage?.id === message.id) {
-                const chat = chats.find((v) => v.id == chatId);
+            if (chats.find((v) => v.id == message.chatId)?.lastMessage?.id === message.id) {
+                const chat = chats.find((v) => v.id == message.chatId);
                 chat!.lastMessage = message;
             }
         });
@@ -120,19 +136,24 @@
         if (!target.closest("[data-menu-container]")) {
             openMenuForMessage = null;
         }
+
+        const currentChatId = currentlySelectedChatId;
+        const chat = currentlySelectedChat;
+        if (currentChatId && chat && chat.readReceipts.count === 0 && stickyUnreadBoundary[currentChatId]) {
+            stickyUnreadBoundary[currentChatId] = null;
+        }
     };
 
     onMount(async () => {
         chats = await data.chats;
         // currentlySelectedChatId = chats[0]?.id || null;
         connectToChat();
-
-        document.addEventListener("click", closeMenusOnClick);
     });
 
     let messages = $state<{ [chatId: string]: Message[] }>({});
     let openMenuForMessage: string | null = $state(null);
     let menuOpensUp: Record<string, boolean> = $state({});
+    let stickyUnreadBoundary: Record<string, string | null> = $state({});
     $effect(() => {
         if (currentlySelectedChatId && !messages[currentlySelectedChatId])
             (async () => {
@@ -158,6 +179,14 @@
                     });
                 }
             })();
+    });
+
+    $effect(() => {
+        if (!currentlySelectedChat) return;
+        const chat = currentlySelectedChat;
+        if (chat.readReceipts.count > 0) {
+            stickyUnreadBoundary[chat.id] = chat.readReceipts.messageId;
+        }
     });
 
     function pageRegainsFocus() {
@@ -312,7 +341,7 @@
     };
 </script>
 
-<svelte:window on:focus={pageRegainsFocus} />
+<svelte:window on:focus={pageRegainsFocus} on:click={closeMenusOnClick} />
 
 <div class="w-full h-full lg:p-10">
     <div class="w-full h-full flex flex-row flex-nowrap border-gray-600">
@@ -422,6 +451,9 @@
                             {:else if messages[chat.id].length === 0}
                                 <div class="w-full flex justify-center items-center p-5 gap-2 font-bold text-lg text-gray-300">No messages yet. Say hello!</div>
                             {:else}
+                                {@const liveUnreadId = chat.readReceipts.count > 0 ? chat.readReceipts.messageId : null}
+                                {@const stickyUnreadId = stickyUnreadBoundary[chat.id] ?? null}
+                                {@const unreadBoundaryId = liveUnreadId ?? stickyUnreadId}
                                 <div class="flex flex-col gap-1 w-full">
                                     {#each messages[chat.id] as message, i (message.id)}
                                         {@const tail = isTailMessage(messages[chat.id], i)}
@@ -492,6 +524,13 @@
                                                     {/if}
                                                 </div>
                                             {/if}
+                                            {#if unreadBoundaryId === message.id}
+                                                <div class="flex items-center gap-3 my-3 text-xs text-gray-200/80" aria-label="Unread messages divider">
+                                                    <div class="flex-1 h-px bg-gray-500"></div>
+                                                    <span class="px-3 py-1 rounded-full bg-gray-700 border border-gray-500">Unread</span>
+                                                    <div class="flex-1 h-px bg-gray-500"></div>
+                                                </div>
+                                            {/if}
                                         </span>
                                     {/each}
                                 </div>
@@ -518,21 +557,3 @@
         </div>
     </div>
 </div>
-
-<style>
-    @keyframes menu-pop {
-        from {
-            opacity: 0;
-            transform: translateY(-4px) scale(0.95);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-        }
-    }
-
-    .menu-pop {
-        animation: menu-pop 150ms ease-out;
-        transform-origin: top left;
-    }
-</style>
