@@ -3,6 +3,7 @@
     import IconButton from "$lib/components/IconButton.svelte";
     import Spinner from "$lib/components/Spinner.svelte";
     import { snowflakeToDate } from "$lib/functions/Snowflake.js";
+    import { formatDate, isTailMessage, toTitleCase } from "$lib/functions/chatHelpers";
     import type { Chat, Message } from "$lib/types/messages";
     import { onDestroy, onMount, tick } from "svelte";
     import { flip } from "svelte/animate";
@@ -10,38 +11,38 @@
 
     let { data } = $props();
 
+    // This is our simple SSE connection to get live updates about new messages
     let conn: EventSource | null = $state(null);
+    // The chats variable should never change significantly
+    // to the point where we require the server to get the latest
+    // content. The only change that happens are UI-only variable changes.
+    // For that reason, after getting data.chats from the server,
+    // we store it in a local variable and modify that instead.
     let chats: Chat[] = $state(null);
-
+    // If we're at the bottom of the page, it means we can update
+    // the scrolling and the last read properties. We just keep track of it here.
+    let atBottom = $state(true);
+    // This is simple state to hold the new message being typed
+    let newMessage: string = $state("");
+    // This is the currently selected chat id from the sidebar
     let currentlySelectedChatId = $state<string>(null);
+    // Using a derived store, we can always have the currently selected chat object
     let currentlySelectedChat: Chat = $derived.by(() => {
         if (currentlySelectedChatId == null || chats == null) return null;
         return chats.find((chat: Chat) => chat.id === currentlySelectedChatId) || null;
     });
+    // This is a store of every message we've listened to so far.
+    // We don't store messages for chats we have not opened yet, because
+    // we can just get those initially anyway.
+    let messages = $state<{ [chatId: string]: Message[] }>({});
+    // I was having some UI trouble and GPT said this variable would be useful
+    let openMenuForMessage: string | null = $state(null);
+    // This is for the divider between unread messages (because it wouldn't
+    // make sense for the divider to disappear the second a new message arrives)
+    let stickyUnreadBoundary: Record<string, string | null> = $state({});
 
-    const updateLastReadForChat = (chatId: string, messageId: string) => {
-        let chat = chats.find((v) => v.id == chatId);
-        let message = messages[chatId]?.find((m) => m.id === messageId);
-        if (!message) return;
-        fetch(`/api/messages/${chatId}?messageId=${messageId}`, {
-            method: "HEAD",
-        }).then(res => {
-            console.log("Marked messages as read on focus:", res.status);
-            if (res.ok) {
-                chat!.readReceipts.count = res.headers.get('X-Unread-Messages') ? parseInt(res.headers.get('X-Unread-Messages')) : 0;
-                chat!.readReceipts.messageId = res.headers.get('X-Last-Message-Id') || messageId;
-            }
-        });
-    };
-
-    const updateChatLists = (chatId: string, message: Message) => {
-        const chat = chats.find((v) => v.id == chatId);
-        if (chat) {
-            chat.lastMessage = message;
-            chats = [chat, ...chats.filter((v) => v.id != chat.id)];
-        }
-    };
-
+    // Our main SSE connection function to connect to the chat stream
+    // and handle reconnections and events.
     const connectToChat = () => {
         conn?.close();
         const source = new EventSource(`/api/messages/stream`);
@@ -130,8 +131,38 @@
             }
         });
     };
+    
+    // This sends the server our last read message for the currently selected chat,
+    // and we can get the updated unread count from the response headers.
+    // we keep track of it locally, but it's not that expensive anyway.
+    const updateLastReadForChat = (chatId: string, messageId: string) => {
+        let chat = chats.find((v) => v.id == chatId);
+        let message = messages[chatId]?.find((m) => m.id === messageId);
+        if (!message) return;
+        fetch(`/api/messages/${chatId}?messageId=${messageId}`, {
+            method: "HEAD",
+        }).then(res => {
+            console.log("Marked messages as read on focus:", res.status);
+            if (res.ok) {
+                chat!.readReceipts.count = res.headers.get('X-Unread-Messages') ? parseInt(res.headers.get('X-Unread-Messages')) : 0;
+                chat!.readReceipts.messageId = res.headers.get('X-Last-Message-Id') || messageId;
+            }
+        });
+    };
 
-    const closeMenusOnClick = (event: MouseEvent) => {
+    // This function just moves up chat lists based on activity, so the most recent
+    // chats are always at the top.
+    const updateChatLists = (chatId: string, message: Message) => {
+        const chat = chats.find((v) => v.id == chatId);
+        if (chat) {
+            chat.lastMessage = message;
+            chats = [chat, ...chats.filter((v) => v.id != chat.id)];
+        }
+    };
+
+    // These two are just helper functions for window events
+    // Should be self-explanatory
+    const onclickwindow = (event: MouseEvent) => {
         const target = event.target as HTMLElement;
         if (!target.closest("[data-menu-container]")) {
             openMenuForMessage = null;
@@ -143,17 +174,25 @@
             stickyUnreadBoundary[currentChatId] = null;
         }
     };
+    const onfocuswindow = (ev: any) => {
+        if (currentlySelectedChatId && atBottom) {
+            let chat = currentlySelectedChat;
+            let message = messages[currentlySelectedChatId]?.findLast((v) => v);
+            if (chat && message) {
+                updateLastReadForChat(currentlySelectedChatId, message.id);
+            }
+        }
+    }
 
+    // When we load the page, we just wait for the chat data
+    // to come in and connect via SSE
     onMount(async () => {
         chats = await data.chats;
         // currentlySelectedChatId = chats[0]?.id || null;
         connectToChat();
     });
 
-    let messages = $state<{ [chatId: string]: Message[] }>({});
-    let openMenuForMessage: string | null = $state(null);
-    let menuOpensUp: Record<string, boolean> = $state({});
-    let stickyUnreadBoundary: Record<string, string | null> = $state({});
+    // Whenever the currently selected chat changes, we load its messages if we haven't already
     $effect(() => {
         if (currentlySelectedChatId && !messages[currentlySelectedChatId])
             (async () => {
@@ -181,6 +220,7 @@
             })();
     });
 
+    // We keep the unread divider until the user interacts with the page a little more
     $effect(() => {
         if (!currentlySelectedChat) return;
         const chat = currentlySelectedChat;
@@ -189,71 +229,19 @@
         }
     });
 
-    function pageRegainsFocus() {
-        if (currentlySelectedChatId && atBottom) {
-            let chat = currentlySelectedChat;
-            let message = messages[currentlySelectedChatId]?.findLast((v) => v);
-            if (chat && message) {
-                updateLastReadForChat(currentlySelectedChatId, message.id);
-            }
-        }
-    }
-
+    // If we've reached the bottom and we're focused, we can just manually
+    // call the onfocuswindow function to update last read
     $effect(() => {
-        if (atBottom && document.hasFocus()) pageRegainsFocus();
+        if (atBottom && document.hasFocus()) onfocuswindow(null);
     });
 
-    let atBottom = $state(true);
-
+    // Make sure we don't carry over the SSE to other pages
     onDestroy(() => {
         conn?.close();
         // document.removeEventListener("click", closeMenusOnClick);
     });
 
-    const toTitleCase = (str: string) => {
-        return str
-            .toLowerCase()
-            .split(" ")
-            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(" ");
-    };
-
-    const isTailMessage = (messagesForChat: Message[], index: number) => {
-        if (index === messagesForChat.length - 1) return true;
-        const current = messagesForChat[index];
-        const next = messagesForChat[index + 1];
-        if (!next) return true;
-        if (next.author !== current.author) return true;
-        const currentTs = snowflakeToDate(current.id);
-        const nextTs = snowflakeToDate(next.id);
-        if (!currentTs || !nextTs) return next.author !== current.author;
-        const diffMs = nextTs.getTime() - currentTs.getTime();
-        const sixtyMinutes = 60 * 60 * 1000;
-        return diffMs > sixtyMinutes;
-    };
-
-    const formatDate = (date: Date): string => {
-        const now = new Date();
-
-        const isSameDay = date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate();
-
-        if (isSameDay) {
-            return date.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-            });
-        }
-
-        return date.toLocaleString([], {
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-        });
-    };
-
-    let newMessage: string = $state("");
+    // The next 3 functions are self-explanatory
     const sendMessage = async () => {
         if (!newMessage.trim() || !currentlySelectedChatId) return;
 
@@ -279,7 +267,6 @@
             console.error("Failed to send message:", res.statusText);
         }
     };
-
     const editMessage = async (message: Message) => {
         const newContent = (await prompt("Edit message", message.content, { startingValue: message.content, promptValue: "Edit message" }))?.trim();
         if (!newContent || newContent === message.content) return;
@@ -300,7 +287,6 @@
         }
         openMenuForMessage = null;
     };
-
     const deleteMessage = async (message: Message) => {
         const stamp = snowflakeToDate(message.id);
         let yes = await confirm("Delete Message", "Are you sure you want to delete this message?", {
@@ -341,7 +327,7 @@
     };
 </script>
 
-<svelte:window on:focus={pageRegainsFocus} on:click={closeMenusOnClick} />
+<svelte:window on:focus={onfocuswindow} on:click={onclickwindow} />
 
 <div class="w-full h-full lg:p-10">
     <div class="w-full h-full flex flex-row flex-nowrap border-gray-600">
