@@ -12,7 +12,7 @@ export const GET: RequestHandler = async ({ params, locals }: any) => {
 	if (!meetingId) return error(400, "Missing required parameter: meetingId");
 
 	try {
-		const meeting = await db.query.schema.meetings.findFirst({
+		const meeting = await db.query.meetings.findFirst({
 			where: eq(schema.meetings.id, meetingId)
 		});
 
@@ -56,4 +56,21 @@ export const PATCH: RequestHandler = async ({ request, params, locals }: any) =>
 		console.log(e);
 		return error(500, e.message || "Internal server error");
 	}
+}
+
+export const DELETE: RequestHandler = async ({ params, locals }: any) => {
+	if (!locals?.user?.permissions?.includes?.(Permission.calendar_moderate)) return error(403, "Access denied.");
+
+	const { meetingId } = params;
+	if (!meetingId) return error(400, "Missing required parameter: meetingId");
+
+	try {
+		await db.delete(schema.meetings).where(eq(schema.meetings.id, meetingId));
+	} catch (e: any) {
+		if (e.name === "HttpError") throw e;
+		console.log(e);
+		return error(500, e.message || "Internal server error");
+	}
+
+	return json({ success: true, data: {} }, { status: 200 })
 }

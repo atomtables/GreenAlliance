@@ -59,15 +59,34 @@
 		}
 	};
 	const editEvent = async (meetingId: number) => {
-		await alert(
-			"Edit meeting",
-			"This feature is not yet implemented. Please contact an administrator to edit meetings.",
-		);
+		let res = await fetch("/api/meetings/" + meetingId);
+
+		if (!res.ok) {
+			let json = await res.json();
+			formError = "There was an error loading data. " + json.error;
+			return;
+		}
+
+		let json = await res.json();
+
+		title = json.title;
+		description = json.description;
+		date = `${json.dateOf.getFullYear()}-${String(
+			json.dateOf.getMonth() + 1,
+		).padStart(2, "0")}-${String(json.dateOf.getDate()).padStart(
+			2,
+			"0",
+		)}T${String(json.dateOf.getHours()).padStart(2, "0")}:${String(
+			json.dateOf.getMinutes(),
+		).padStart(2, "0")}`;
+		subteams = json.applicableSubteams;
+		selectedMembers = members.filter((m) => json.members.includes(m.id));
+
+		createNewEventOpen = true;
 	};
 	const removeEvent = async (meetingId: number) => {
-		let res = await fetch("/api/meetings", {
+		let res = await fetch("/api/meetings/" + meetingId, {
 			method: "DELETE",
-			body: JSON.stringify({ meetingId }),
 		});
 		if (!res.ok) {
 			let json = await res.json();
