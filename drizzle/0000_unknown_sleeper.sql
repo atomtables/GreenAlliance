@@ -22,7 +22,8 @@ CREATE TABLE "meetings" (
 	"title" text NOT NULL,
 	"description" text,
 	"date_of" timestamp NOT NULL,
-	"subteams" jsonb DEFAULT '[]'::jsonb NOT NULL
+	"subteams" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"members" jsonb DEFAULT '[]'::jsonb NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "session" (

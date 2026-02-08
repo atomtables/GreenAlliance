@@ -12,6 +12,8 @@
 	let { data } = $props();
 	let today = new Date();
 
+	const members = data.users;
+
 	let createNewEventOpen = $state(false);
 	let customMemberInvite = $state(false);
 	let date = $state(
@@ -19,12 +21,9 @@
 	);
 	let title = $state();
 	let description = $state();
-	let subteams = $state({});
-	let selectedMembers = $state([]);
+	let subteams = $state([]);
+	let selectedMembers = $state(new Array(members.length).fill(""));
 	let formError = $state();
-
-	const members = data.users;
-	console.log(members);
 
 	const createNewEvent = async () => {
 		let res = await fetch("/api/meetings", {
@@ -80,6 +79,33 @@
 			);
 		}
 	};
+	const toggleSubteam = (subteam: string) => {
+		if (subteams.includes(subteam)) {
+			subteams = subteams.filter((s) => s !== subteam);
+		} else {
+			subteams = [...subteams, subteam];
+		}
+		for (let i = 0; i < members.length; i++) {
+			let found = false;
+			if (members[i].subteam === "All" && subteams.length > 0) {
+				found = true;
+			}
+			for (let j = 0; j < subteams.length; j++) {
+				if (subteams[j] === "All") {
+					found = true;
+					break;
+				} else if (members[i].subteam === subteams[j]) {
+					found = true;
+					break;
+				}
+			}
+			if (!found) {
+				selectedMembers[i] = "";
+			} else if (selectedMembers[i] === "") {
+				selectedMembers[i] = members[i];
+			}
+		}
+	};
 </script>
 
 <Dialog
@@ -97,9 +123,12 @@
 	<div class="flex flex-col">
 		<h2 class="pl-1">Applicable to subteams:</h2>
 		<div class="flex flex-row gap-4 flex-wrap">
-			{#each data.subteams as subteam, i}
+			{#each data.subteams as subteam}
 				<div class="flex flex-row gap-1 justify-center items-center">
-					<Input type="checkbox" bind:value={subteams[i]} />
+					<Input
+						type="checkbox"
+						onchange={() => toggleSubteam(subteam.name)}
+					/>
 					<span>{subteam.name}</span>
 				</div>
 			{/each}

@@ -1,5 +1,5 @@
 {
-  "id": "0c27f281-82fc-4df0-96ae-975a23bfb45e",
+  "id": "a59af8d0-30e0-4baa-baa6-d98a65334b16",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -182,6 +182,13 @@
         },
         "subteams": {
           "name": "subteams",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "members": {
+          "name": "members",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": true,
