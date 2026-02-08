@@ -12,13 +12,19 @@
 	let { data } = $props();
 	let today = new Date();
 
+	const toLocalISOString = (date: Date) => {
+		const offset = date.getTimezoneOffset() * 60000; // offset in milliseconds
+		const localISOTime = new Date(date.getTime() - offset)
+			.toISOString()
+			.slice(0, 16);
+		return localISOTime;
+	};
+
 	const members = data.users;
 
 	let createNewEventOpen = $state(false);
 	let customMemberInvite = $state(false);
-	let date = $state(
-		`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}T12:00`,
-	);
+	let date = $state(toLocalISOString(today));
 	let title = $state();
 	let description = $state();
 	let subteams = $state([]);
@@ -26,17 +32,18 @@
 	let formError = $state();
 
 	const createNewEvent = async () => {
+		const dateObj = new Date(date);
 		let res = await fetch("/api/meetings", {
 			method: "PUT",
 			body: JSON.stringify({
 				title,
 				description,
-				date: new Date(date),
+				date: dateObj,
 				// @ts-ignore
 				applicableSubteams: Object.entries(subteams)
 					.flatMap(([k, v]) => v && parseInt(k))
-					.filter((v) => v === false),
-				members: selectedMembers.map((m) => m.id),
+					.filter((v) => typeof v === "number"),
+				members: selectedMembers,
 			}),
 		});
 		if (!res.ok) {
@@ -58,7 +65,7 @@
 			);
 		}
 	};
-	const editEvent = async (meetingId: number) => {
+	const editEvent = async (meetingId: string) => {
 		let res = await fetch("/api/meetings/" + meetingId);
 
 		if (!res.ok) {
@@ -69,22 +76,19 @@
 
 		let json = await res.json();
 
-		title = json.title;
-		description = json.description;
-		date = `${json.dateOf.getFullYear()}-${String(
-			json.dateOf.getMonth() + 1,
-		).padStart(2, "0")}-${String(json.dateOf.getDate()).padStart(
-			2,
-			"0",
-		)}T${String(json.dateOf.getHours()).padStart(2, "0")}:${String(
-			json.dateOf.getMinutes(),
-		).padStart(2, "0")}`;
-		subteams = json.applicableSubteams;
-		selectedMembers = members.filter((m) => json.members.includes(m.id));
+		let meetingData = json.data;
+
+		console.log(meetingData);
+
+		title = meetingData.title;
+		description = meetingData.description;
+		date = toLocalISOString(new Date(meetingData.dateOf));
+		subteams = meetingData.subteams;
+		selectedMembers = meetingData.members;
 
 		createNewEventOpen = true;
 	};
-	const removeEvent = async (meetingId: number) => {
+	const removeEvent = async (meetingId: string) => {
 		let res = await fetch("/api/meetings/" + meetingId, {
 			method: "DELETE",
 		});
