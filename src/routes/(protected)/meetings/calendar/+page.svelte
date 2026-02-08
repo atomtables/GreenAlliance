@@ -78,8 +78,6 @@
 
 		let meetingData = json.data;
 
-		console.log(meetingData);
-
 		title = meetingData.title;
 		description = meetingData.description;
 		date = toLocalISOString(new Date(meetingData.dateOf));
@@ -172,16 +170,7 @@
 				bind:open={customMemberInvite}
 				title="Custom member invite"
 				description="Select specific members to invite to this meeting. (This overrides subteam selection)"
-				actions={[
-					{ name: "Close", action: () => null, close: true },
-					{
-						name: "Save",
-						action: () => {
-							customMemberInvite = false;
-						},
-						close: true,
-					},
-				]}
+				actions={[{ name: "Close", action: () => null, close: true }]}
 			>
 				<Table source={members} bind:selected={selectedMembers}>
 					{#snippet header()}
@@ -224,7 +213,16 @@
 				{today.toMonthString()}
 				{today.getFullYear()}
 			</span>
-			<IconButton onclick={() => (createNewEventOpen = true)}
+			<IconButton
+				onclick={() => {
+					createNewEventOpen = true;
+					title = "";
+					description = "";
+					date = toLocalISOString(today);
+					subteams = [];
+					selectedMembers = new Array(members.length).fill("");
+					formError = "";
+				}}
 				><span class="material-symbols-outlined icons-fill">add</span
 				></IconButton
 			>
