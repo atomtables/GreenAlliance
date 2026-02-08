@@ -37,6 +37,7 @@
 				applicableSubteams: Object.entries(subteams)
 					.flatMap(([k, v]) => v && parseInt(k))
 					.filter((v) => v === false),
+				members: selectedMembers.map((m) => m.id),
 			}),
 		});
 		if (!res.ok) {
