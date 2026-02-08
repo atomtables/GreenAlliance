@@ -30,9 +30,43 @@
 	let subteams = $state([]);
 	let selectedMembers = $state(new Array(members.length).fill(""));
 	let formError = $state();
+	let editId = $state("");
 
 	const createNewEvent = async () => {
 		const dateObj = new Date(date);
+
+		if (editId !== "") {
+			let res = await fetch("/api/meetings/" + editId, {
+				method: "PATCH",
+				body: JSON.stringify({
+					title,
+					description,
+					date: dateObj,
+					// @ts-ignore
+					applicableSubteams: Object.entries(subteams)
+						.flatMap(([k, v]) => v && parseInt(k))
+						.filter((v) => typeof v === "number"),
+					members: selectedMembers,
+				}),
+			});
+			if (!res.ok) {
+				let json = await res.json();
+				formError = "There was an error loading data. " + json.error;
+				return;
+			}
+			let json = await res.json();
+			if (json.success) {
+				invalidate("meetings:events");
+				await alert("Edit meeting", "Successfully edited your event!");
+				return;
+			} else {
+				await alert(
+					"There was an error submitting your request. Try again later.",
+				);
+			}
+			return;
+		}
+
 		let res = await fetch("/api/meetings", {
 			method: "PUT",
 			body: JSON.stringify({
@@ -85,6 +119,7 @@
 		selectedMembers = meetingData.members;
 
 		createNewEventOpen = true;
+		editId = meetingId;
 	};
 	const removeEvent = async (meetingId: string) => {
 		let res = await fetch("/api/meetings/" + meetingId, {
