@@ -58,6 +58,12 @@
 			);
 		}
 	};
+	const editEvent = async (meetingId: number) => {
+		await alert(
+			"Edit meeting",
+			"This feature is not yet implemented. Please contact an administrator to edit meetings.",
+		);
+	};
 	const removeEvent = async (meetingId: number) => {
 		let res = await fetch("/api/meetings", {
 			method: "DELETE",
@@ -237,15 +243,29 @@
 									<span class="font-light">
 										{meeting.title}
 									</span>
-									<IconButton
-										onclick={() => removeEvent(meeting.id)}
+									<div
+										class="flex flex-row justify-end space-x-2"
 									>
-										{console.log(meeting.id)}
-										<span
-											class="material-symbols-outlined icons-fill !text-sm"
-											>delete</span
+										<IconButton
+											onclick={() =>
+												editEvent(meeting.id)}
 										>
-									</IconButton>
+											<span
+												class="material-symbols-outlined icons-fill !text-sm"
+											>
+												edit
+											</span>
+										</IconButton>
+										<IconButton
+											onclick={() =>
+												removeEvent(meeting.id)}
+										>
+											<span
+												class="material-symbols-outlined icons-fill !text-sm"
+												>delete</span
+											>
+										</IconButton>
+									</div>
 								</div>
 							</div>
 						{/if}
