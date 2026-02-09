@@ -9,12 +9,13 @@ import crypto from 'node:crypto';
 export const PUT: RequestHandler = async ({ request, locals }: any) => {
 	if (!locals?.user?.permissions?.includes?.(Permission.calendar_moderate)) return error(403, "Access denied.");
 
-	let { title, description, date, applicableSubteams } = await request.json();
+	let { title, description, date, applicableSubteams, members } = await request.json();
 	if (!title || !date || isNaN(new Date(date).getTime())) return error(400, "Please fill out all necessary fields.");
 
 	try {
 		// generate id so we can return it reliably to the client/tests
 		const id = crypto.randomUUID();
+		console.log(applicableSubteams, members);
 		await db.insert(schema.meetings).values({
 			id,
 			createdBy: locals.user.id,
@@ -22,7 +23,7 @@ export const PUT: RequestHandler = async ({ request, locals }: any) => {
 			description: description || null,
 			dateOf: new Date(date),
 			subteams: applicableSubteams || [],
-			members: []
+			members: members || []
 		} as any);
 
 		return json({ success: true, data: { id } }, { status: 201 });
@@ -34,20 +35,3 @@ export const PUT: RequestHandler = async ({ request, locals }: any) => {
 	}
 }
 
-export const DELETE: RequestHandler = async ({ request, locals }: any) => {
-	if (!locals?.user?.permissions?.includes?.(Permission.calendar_moderate)) return error(403, "Access denied.");
-
-	const { meetingId } = await request.json() || {};
-	if (!meetingId) return error(400, "Missing required field: meetingId");
-
-	try {
-		// Delete the meeting
-		await db.delete(schema.meetings).where(eq(schema.meetings.id, meetingId));
-	} catch (e: any) {
-		if (e.name === "HttpError") throw e;
-		console.log(e);
-		return error(500, e.message || "Internal server error");
-	}
-
-	return json({ success: true, data: {} }, { status: 200 })
-}

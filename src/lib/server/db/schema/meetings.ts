@@ -11,8 +11,8 @@ export const meetings = pgTable('meetings', {
 	title: text('title').notNull(),
 	description: text('description'),
 	dateOf: timestamp('date_of', { mode: 'date' }).notNull(),
-	subteams: json<string[]>('subteams').notNull().default(sql`'[]'::jsonb`),
-	members: json<string[]>('members').notNull().default(sql`'[]'::jsonb`),
+	subteams: text('subteams').array().notNull().default(([])),
+	members: text('members').array().notNull().default(([])),
 });
 
 export const meetingAttendees = pgTable('meeting_attendees', {

@@ -28,32 +28,39 @@
 	let title = $state();
 	let description = $state();
 	let subteams = $state([]);
-	let selectedMembers = $state(new Array(members.length).fill(""));
+	let selectedMembers = $state(new Array(members.length).fill(false));
 	let formError = $state();
 	let editId = $state("");
 
 	const createNewEvent = async () => {
 		const dateObj = new Date(date);
 
+		const cleanedMembers = $state
+			.snapshot(selectedMembers)
+			.map((isSelected, index) => (isSelected ? members[index].id : null))
+			.filter((id) => id !== null);
+
+		const payload = {
+			title,
+			description,
+			date: dateObj,
+			applicableSubteams: $state.snapshot(subteams),
+			members: cleanedMembers,
+		};
+
 		if (editId !== "") {
 			let res = await fetch("/api/meetings/" + editId, {
 				method: "PATCH",
-				body: JSON.stringify({
-					title,
-					description,
-					date: dateObj,
-					// @ts-ignore
-					applicableSubteams: Object.entries(subteams)
-						.flatMap(([k, v]) => v && parseInt(k))
-						.filter((v) => typeof v === "number"),
-					members: selectedMembers,
-				}),
+				body: JSON.stringify(payload),
 			});
+
 			if (!res.ok) {
 				let json = await res.json();
 				formError = "There was an error loading data. " + json.error;
 				return;
 			}
+
+			editId = "";
 			let json = await res.json();
 			if (json.success) {
 				invalidate("meetings:events");
@@ -69,22 +76,15 @@
 
 		let res = await fetch("/api/meetings", {
 			method: "PUT",
-			body: JSON.stringify({
-				title,
-				description,
-				date: dateObj,
-				// @ts-ignore
-				applicableSubteams: Object.entries(subteams)
-					.flatMap(([k, v]) => v && parseInt(k))
-					.filter((v) => typeof v === "number"),
-				members: selectedMembers,
-			}),
+			body: JSON.stringify(payload),
 		});
+
 		if (!res.ok) {
 			let json = await res.json();
 			formError = "There was an error loading data. " + json.error;
 			return;
 		}
+
 		let json = await res.json();
 		if (json.success) {
 			invalidate("meetings:events");
@@ -116,7 +116,9 @@
 		description = meetingData.description;
 		date = toLocalISOString(new Date(meetingData.dateOf));
 		subteams = meetingData.subteams;
-		selectedMembers = meetingData.members;
+		for (let i = 0; i < members.length; i++) {
+			selectedMembers[i] = meetingData.members.includes(members[i].id);
+		}
 
 		createNewEventOpen = true;
 		editId = meetingId;
@@ -161,11 +163,7 @@
 					break;
 				}
 			}
-			if (!found) {
-				selectedMembers[i] = "";
-			} else if (selectedMembers[i] === "") {
-				selectedMembers[i] = members[i];
-			}
+			selectedMembers[i] = found;
 		}
 	};
 </script>
@@ -175,7 +173,13 @@
 	title="Create a new meeting"
 	description=""
 	actions={[
-		{ name: "Cancel", action: () => null, close: true },
+		{
+			name: "Cancel",
+			action: () => {
+				editId = "";
+			},
+			close: true,
+		},
 		{ name: "Submit", close: true, primary: true, action: createNewEvent },
 	]}
 >
@@ -189,6 +193,7 @@
 				<div class="flex flex-row gap-1 justify-center items-center">
 					<Input
 						type="checkbox"
+						checked={subteams.includes(subteam.name)}
 						onchange={() => toggleSubteam(subteam.name)}
 					/>
 					<span>{subteam.name}</span>
