@@ -32,6 +32,10 @@
 	let formError = $state();
 	let editId = $state("");
 
+	const meetings = data.meetings.sort(
+		(a, b) => a.dateOf.getTime() - b.dateOf.getTime(),
+	);
+
 	const createNewEvent = async () => {
 		const dateObj = new Date(date);
 
@@ -286,7 +290,7 @@
 					<div class="font-bold text-2xl p-2">
 						{i + 1}
 					</div>
-					{#each data.meetings as meeting}
+					{#each meetings as meeting}
 						{#if meeting.dateOf.getMonth() === today.getMonth() && meeting.dateOf.getDate() === i + 1}
 							<div
 								class="bg-orange-800 w-full text-sm font-bold p-1"
