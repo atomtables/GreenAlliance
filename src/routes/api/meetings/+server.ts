@@ -15,7 +15,6 @@ export const PUT: RequestHandler = async ({ request, locals }: any) => {
 	try {
 		// generate id so we can return it reliably to the client/tests
 		const id = crypto.randomUUID();
-		console.log(applicableSubteams, members);
 		await db.insert(schema.meetings).values({
 			id,
 			createdBy: locals.user.id,
@@ -30,7 +29,6 @@ export const PUT: RequestHandler = async ({ request, locals }: any) => {
 
 	} catch (e: any) {
 		if (e.name === "HttpError") throw e;
-		console.log(e);
 		return error(500, e.message || "Internal server error");
 	}
 }
