@@ -15,6 +15,13 @@
       "when": 1770588388141,
       "tag": "0001_furry_blue_marvel",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1771795998258,
+      "tag": "0002_motionless_jetstream",
+      "breakpoints": true
     }
   ]
 }

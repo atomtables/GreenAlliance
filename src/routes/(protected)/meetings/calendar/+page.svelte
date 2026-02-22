@@ -68,6 +68,7 @@
 			let json = await res.json();
 			if (json.success) {
 				invalidate("meetings:events");
+				createNewEventOpen = false;
 				await alert("Edit meeting", "Successfully edited your event!");
 				return;
 			} else {
