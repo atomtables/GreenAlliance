@@ -21,12 +21,15 @@
 	};
 
 	const members = data.users;
+	const { editAccess } = data;
 
 	let createNewEventOpen = $state(false);
 	let customMemberInvite = $state(false);
+	let selectedMeetingOpen = $state(false);
+	let selectedMeetingPresent = $state([]);
 	let date = $state(toLocalISOString(today));
-	let title = $state();
-	let description = $state();
+	let title = $state("");
+	let description = $state("");
 	let subteams = $state([]);
 	let selectedMembers = $state(new Array(members.length).fill(false));
 	let formError = $state();
@@ -249,6 +252,63 @@
 	</div>
 </Dialog>
 
+<Dialog
+	bind:open={selectedMeetingOpen}
+	{title}
+	{description}
+	actions={[
+		{
+			name: "Close",
+			action: () => (selectedMeetingPresent.length = 0),
+			close: true,
+		},
+		{
+			name: "Save Changes",
+			action: createNewEvent,
+			primary: true,
+			close: true,
+		},
+	]}
+>
+	<div class="flex flex-col gap-2 mb-4">
+		<div>
+			<span class="font-bold">Date: </span>
+			{new Date(date).toLocaleString()}
+		</div>
+		<div>
+			<span class="font-bold">Subteams: </span>
+			{subteams.length > 0 ? subteams.join(", ") : "None"}
+		</div>
+	</div>
+	<Table
+		source={members.filter((member, index) => selectedMembers[index])}
+		bind:selected={selectedMeetingPresent}
+	>
+		{#snippet header()}
+			<th>Name</th>
+			<th>Role</th>
+		{/snippet}
+		{#snippet template({ firstName, lastName, role }, index)}
+			<th class="px-2">{firstName + " " + lastName}</th>
+			<th class="px-2"
+				>{role === Role.administrator
+					? "adm."
+					: role === Role.coach
+						? "coa."
+						: role === Role.mentor
+							? "ment."
+							: role === Role.captain
+								? "capt."
+								: role === Role.lead
+									? "lead."
+									: role === Role.member
+										? "mem."
+										: "?"}
+			</th>
+		{/snippet}
+	</Table>
+</Dialog>
+
 <div class="w-full h-full p-10">
 	<div class="bg-slate-600 w-full h-full flex flex-col overflow-y-scroll">
 		<div
@@ -294,7 +354,20 @@
 					{#each meetings as meeting}
 						{#if meeting.dateOf.getMonth() === today.getMonth() && meeting.dateOf.getDate() === i + 1}
 							<div
-								class="bg-orange-800 w-full text-sm font-bold p-1"
+								class="bg-orange-800 w-full text-sm font-bold p-1 rounded-md cursor-pointer hover:bg-orange-700 transition-colors duration-200 line-clamp-3 break-all max-h-16"
+								onclick={() => {
+									selectedMeetingOpen = true;
+									title = meeting.title;
+									description = meeting.description;
+									date = toLocalISOString(meeting.dateOf);
+									subteams = meeting.subteams;
+									for (let i = 0; i < members.length; i++) {
+										selectedMembers[i] =
+											meeting.members.includes(
+												members[i].id,
+											);
+									}
+								}}
 							>
 								<div class="line-clamp-1 break-all max-w-full">
 									<span class="font-bold">
@@ -309,29 +382,35 @@
 									<span class="font-light">
 										{meeting.title}
 									</span>
-									<div
-										class="flex flex-row justify-end space-x-2"
-									>
-										<IconButton
-											onclick={() =>
-												editEvent(meeting.id)}
+									{#if editAccess}
+										<div
+											class="flex flex-row justify-end space-x-2"
 										>
-											<span
-												class="material-symbols-outlined icons-fill !text-sm"
+											<IconButton
+												onclick={(e) => {
+													e.stopPropagation();
+													editEvent(meeting.id);
+												}}
 											>
-												edit
-											</span>
-										</IconButton>
-										<IconButton
-											onclick={() =>
-												removeEvent(meeting.id)}
-										>
-											<span
-												class="material-symbols-outlined icons-fill !text-sm"
-												>delete</span
+												<span
+													class="material-symbols-outlined icons-fill !text-sm"
+												>
+													edit
+												</span>
+											</IconButton>
+											<IconButton
+												onclick={(e) => {
+													e.stopPropagation();
+													removeEvent(meeting.id);
+												}}
 											>
-										</IconButton>
-									</div>
+												<span
+													class="material-symbols-outlined icons-fill !text-sm"
+													>delete</span
+												>
+											</IconButton>
+										</div>
+									{/if}
 								</div>
 							</div>
 						{/if}
