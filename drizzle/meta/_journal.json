@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1770530418446,
-      "tag": "0000_unknown_sleeper",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1770588388141,
-      "tag": "0001_furry_blue_marvel",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1771795998258,
-      "tag": "0002_motionless_jetstream",
+      "when": 1771882217678,
+      "tag": "0000_rainy_alex_wilder",
       "breakpoints": true
     }
   ]

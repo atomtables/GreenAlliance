@@ -26,6 +26,7 @@
 	let createNewEventOpen = $state(false);
 	let customMemberInvite = $state(false);
 	let selectedMeetingOpen = $state(false);
+	let selectedMeeting = $state("");
 	let selectedMeetingPresent = $state([]);
 	let date = $state(toLocalISOString(today));
 	let title = $state("");
@@ -33,7 +34,6 @@
 	let subteams = $state([]);
 	let selectedMembers = $state(new Array(members.length).fill(false));
 	let formError = $state();
-	let editId = $state("");
 
 	const meetings = data.meetings.sort(
 		(a, b) => a.dateOf.getTime() - b.dateOf.getTime(),
@@ -55,8 +55,8 @@
 			members: cleanedMembers,
 		};
 
-		if (editId !== "") {
-			let res = await fetch("/api/meetings/" + editId, {
+		if (selectedMeeting !== "") {
+			let res = await fetch("/api/meetings/" + selectedMeeting, {
 				method: "PATCH",
 				body: JSON.stringify(payload),
 			});
@@ -67,7 +67,7 @@
 				return;
 			}
 
-			editId = "";
+			selectedMeeting = "";
 			let json = await res.json();
 			if (json.success) {
 				invalidate("meetings:events");
@@ -107,6 +107,7 @@
 			);
 		}
 	};
+
 	const editEvent = async (meetingId: string) => {
 		let res = await fetch("/api/meetings/" + meetingId);
 
@@ -129,8 +130,9 @@
 		}
 
 		createNewEventOpen = true;
-		editId = meetingId;
+		selectedMeeting = meetingId;
 	};
+
 	const removeEvent = async (meetingId: string) => {
 		let res = await fetch("/api/meetings/" + meetingId, {
 			method: "DELETE",
@@ -151,6 +153,7 @@
 			);
 		}
 	};
+
 	const toggleSubteam = (subteam: string) => {
 		if (subteams.includes(subteam)) {
 			subteams = subteams.filter((s) => s !== subteam);
@@ -174,6 +177,55 @@
 			selectedMembers[i] = found;
 		}
 	};
+
+	const getAttendance = async () => {
+		let res = await fetch("/api/attendees/" + selectedMeeting);
+		if (!res.ok) {
+			return [];
+		}
+		let json = await res.json();
+		const userIds = json.userIds;
+
+		const newAttendance = selectedMembers.map((member) =>
+			userIds.includes(member.id),
+		);
+
+		selectedMeetingPresent = newAttendance;
+	};
+
+	const saveAttendance = async () => {
+		let payload = [];
+		for (let i = 0; i < selectedMembers.length; i++) {
+			if (selectedMeetingPresent[i]) {
+				payload.push(selectedMembers[i].id);
+			}
+		}
+
+		let res = await fetch("/api/attendees/" + selectedMeeting, {
+			method: "POST",
+			body: JSON.stringify({ userIds: payload }),
+		});
+
+		if (!res.ok) {
+			await alert(
+				"There was an error submitting your request. Try again later.",
+			);
+			return;
+		}
+
+		let json = await res.json();
+		if (json.success) {
+			await alert(
+				"Save attendance",
+				"Successfully saved attendance for the event!",
+			);
+			return;
+		} else {
+			await alert(
+				"There was an error submitting your request. Try again later.",
+			);
+		}
+	};
 </script>
 
 <Dialog
@@ -184,7 +236,7 @@
 		{
 			name: "Cancel",
 			action: () => {
-				editId = "";
+				selectedMeeting = "";
 			},
 			close: true,
 		},
@@ -264,7 +316,7 @@
 		},
 		{
 			name: "Save Changes",
-			action: createNewEvent,
+			action: saveAttendance,
 			primary: true,
 			close: true,
 		},
@@ -280,10 +332,7 @@
 			{subteams.length > 0 ? subteams.join(", ") : "None"}
 		</div>
 	</div>
-	<Table
-		source={members.filter((member, index) => selectedMembers[index])}
-		bind:selected={selectedMeetingPresent}
-	>
+	<Table source={selectedMembers} bind:selected={selectedMeetingPresent}>
 		{#snippet header()}
 			<th>Name</th>
 			<th>Role</th>
@@ -355,18 +404,24 @@
 						{#if meeting.dateOf.getMonth() === today.getMonth() && meeting.dateOf.getDate() === i + 1}
 							<div
 								class="bg-orange-800 w-full text-sm font-bold p-1 rounded-md cursor-pointer hover:bg-orange-700 transition-colors duration-200 line-clamp-3 break-all max-h-16"
-								onclick={() => {
+								onclick={async () => {
 									selectedMeetingOpen = true;
 									title = meeting.title;
 									description = meeting.description;
 									date = toLocalISOString(meeting.dateOf);
 									subteams = meeting.subteams;
+									selectedMeeting = meeting.id;
+									selectedMembers = [];
 									for (let i = 0; i < members.length; i++) {
-										selectedMembers[i] =
+										if (
 											meeting.members.includes(
 												members[i].id,
-											);
+											)
+										) {
+											selectedMembers.push(members[i]);
+										}
 									}
+									await getAttendance();
 								}}
 							>
 								<div class="line-clamp-1 break-all max-w-full">
