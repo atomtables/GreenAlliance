@@ -28,6 +28,7 @@
 	let selectedMeetingOpen = $state(false);
 	let selectedMeeting = $state("");
 	let selectedMeetingPresent = $state([]);
+	let selectedMeetingStatus = $state("");
 	let date = $state(toLocalISOString(today));
 	let title = $state("");
 	let description = $state("");
@@ -226,6 +227,42 @@
 			);
 		}
 	};
+
+	const getStatus = async () => {
+		let res = await fetch("/api/attendees/status/" + selectedMeeting);
+		if (!res.ok) {
+			return;
+		}
+		let json = await res.json();
+		selectedMeetingStatus = json.userStatus;
+	};
+
+	const updateStatus = async () => {
+		let res = await fetch("/api/attendees/status/" + selectedMeeting, {
+			method: "POST",
+			body: JSON.stringify({ status: selectedMeetingStatus }),
+		});
+
+		if (!res.ok) {
+			await alert(
+				"There was an error submitting your request. Try again later.",
+			);
+			return;
+		}
+
+		let json = await res.json();
+		if (json.success) {
+			await alert(
+				"Update attendance status",
+				"Successfully updated your attendance status for the event!",
+			);
+			return;
+		} else {
+			await alert(
+				"There was an error submitting your request. Try again later.",
+			);
+		}
+	};
 </script>
 
 <Dialog
@@ -304,59 +341,126 @@
 	</div>
 </Dialog>
 
-<Dialog
-	bind:open={selectedMeetingOpen}
-	{title}
-	{description}
-	actions={[
-		{
-			name: "Close",
-			action: () => (selectedMeetingPresent.length = 0),
-			close: true,
-		},
-		{
-			name: "Save Changes",
-			action: saveAttendance,
-			primary: true,
-			close: true,
-		},
-	]}
->
-	<div class="flex flex-col gap-2 mb-4">
-		<div>
-			<span class="font-bold">Date: </span>
-			{new Date(date).toLocaleString()}
+{#if editAccess}
+	<Dialog
+		bind:open={selectedMeetingOpen}
+		{title}
+		{description}
+		actions={[
+			{
+				name: "Close",
+				action: () => (selectedMeetingPresent.length = 0),
+				close: true,
+			},
+			{
+				name: "Save Changes",
+				action: saveAttendance,
+				primary: true,
+				close: true,
+			},
+		]}
+	>
+		<div class="flex flex-col gap-2 mb-4">
+			<div>
+				<span class="font-bold">Date: </span>
+				{new Date(date).toLocaleString()}
+			</div>
+			<div>
+				<span class="font-bold">Subteams: </span>
+				{subteams.length > 0 ? subteams.join(", ") : "None"}
+			</div>
 		</div>
-		<div>
-			<span class="font-bold">Subteams: </span>
-			{subteams.length > 0 ? subteams.join(", ") : "None"}
+		<Table source={selectedMembers} bind:selected={selectedMeetingPresent}>
+			{#snippet header()}
+				<th>Name</th>
+				<th>Role</th>
+			{/snippet}
+			{#snippet template({ firstName, lastName, role }, index)}
+				<th class="px-2">{firstName + " " + lastName}</th>
+				<th class="px-2"
+					>{role === Role.administrator
+						? "adm."
+						: role === Role.coach
+							? "coa."
+							: role === Role.mentor
+								? "ment."
+								: role === Role.captain
+									? "capt."
+									: role === Role.lead
+										? "lead."
+										: role === Role.member
+											? "mem."
+											: "?"}
+				</th>
+			{/snippet}
+		</Table>
+	</Dialog>
+{:else}
+	<Dialog
+		bind:open={selectedMeetingOpen}
+		{title}
+		{description}
+		actions={[{ name: "Close", action: () => null, close: true }]}
+	>
+		<div class="flex flex-col gap-2 mb-4">
+			<div>
+				<span class="font-bold">Date: </span>
+				{new Date(date).toLocaleString()}
+			</div>
+			<div>
+				<span class="font-bold">Subteams: </span>
+				{subteams.length > 0 ? subteams.join(", ") : "None"}
+			</div>
+			<div>
+				<span class="font-bold">Members Invited: </span>
+				{selectedMembers.length > 0
+					? selectedMembers
+							.map((m) => m.firstName + " " + m.lastName)
+							.join(", ")
+					: "None"}
+			</div>
+
+			<div class="flex flex-col">
+				<h2 class="pl-1">Are you able to attend?</h2>
+				<div class="flex flex-row gap-4 flex-wrap">
+					<Button
+						onclick={() => {
+							selectedMeetingStatus = "yes";
+							updateStatus();
+						}}
+						class={selectedMeetingStatus === "yes"
+							? ""
+							: "bg-gray-500 cursor-not-allowed hover:bg-gray-400"}
+					>
+						Yes
+					</Button>
+					<Button
+						onclick={() => {
+							selectedMeetingStatus = "no";
+							updateStatus();
+						}}
+						class={selectedMeetingStatus === "no"
+							? ""
+							: "bg-gray-500 cursor-not-allowed hover:bg-gray-400"}
+					>
+						No
+					</Button>
+					<Button
+						onclick={() => {
+							selectedMeetingStatus = "maybe";
+							updateStatus();
+						}}
+						class={selectedMeetingStatus === "maybe"
+							? ""
+							: "bg-gray-500 cursor-not-allowed hover:bg-gray-400"}
+					>
+						Maybe
+					</Button>
+				</div>
+			</div>
 		</div>
-	</div>
-	<Table source={selectedMembers} bind:selected={selectedMeetingPresent}>
-		{#snippet header()}
-			<th>Name</th>
-			<th>Role</th>
-		{/snippet}
-		{#snippet template({ firstName, lastName, role }, index)}
-			<th class="px-2">{firstName + " " + lastName}</th>
-			<th class="px-2"
-				>{role === Role.administrator
-					? "adm."
-					: role === Role.coach
-						? "coa."
-						: role === Role.mentor
-							? "ment."
-							: role === Role.captain
-								? "capt."
-								: role === Role.lead
-									? "lead."
-									: role === Role.member
-										? "mem."
-										: "?"}
-			</th>
-		{/snippet}
-	</Table>
-</Dialog>
+	</Dialog>
+{/if}
 
 <div class="w-full h-full p-10">
 	<div class="bg-slate-600 w-full h-full flex flex-col overflow-y-scroll">
@@ -421,7 +525,11 @@
 											selectedMembers.push(members[i]);
 										}
 									}
-									await getAttendance();
+									if (editAccess) {
+										await getAttendance();
+									} else {
+										await getStatus();
+									}
 								}}
 							>
 								<div class="line-clamp-1 break-all max-w-full">
