@@ -15,11 +15,11 @@ export const GET: RequestHandler = async ({ params, locals }: any) => {
 		const userStatus = await db
 			.select({ status: schema.meetingAttendees.status })
 			.from(schema.meetingAttendees)
-			.where(and(eq(schema.meetingAttendees.meetingId, meetingId)), eq(schema.meetingAttendees.userId, locals.user.id));
+			.where(and(eq(schema.meetingAttendees.meetingId, meetingId), eq(schema.meetingAttendees.userId, locals.user.id)));
 
 		if (!userStatus || userStatus.length === 0) return error(404, "No attendance status found for this user or meeting does not exist");
 
-		return json({ success: true, userStatus: userStatus[0].status }, { status: 200 });
+		return json({ success: true, userStatus: userStatus[0]?.status || "maybe" }, { status: 200 });
 
 	} catch (e: any) {
 		if (e.name === "HttpError") throw e;
@@ -39,15 +39,14 @@ export const POST: RequestHandler = async ({ request, params, locals }: any) => 
 
 	try {
 		const existingRecord = await db
-			.select({ id: schema.meetingAttendees.id })
-			.from(schema.meetingAttendees)
-			.where(and(eq(schema.meetingAttendees.meetingId, meetingId)), eq(schema.meetingAttendees.userId, locals.user.id))
+			.update(schema.meetingAttendees)
+			.set({ status })
+			.where(and(eq(schema.meetingAttendees.meetingId, meetingId), eq(schema.meetingAttendees.userId, locals.user.id)))
+			.returning({ id: schema.meetingAttendees.id });
 
-		if (!existingRecord) {
+		if (existingRecord.length === 0) {
 			return error(404, "Attendance record not found for this user and meeting");
 		}
-
-		await db.update(schema.meetingAttendees).set({ status }).where(eq(schema.meetingAttendees.id, existingRecord.id));
 
 		return json({ success: true, data: {} }, { status: 200 });
 
