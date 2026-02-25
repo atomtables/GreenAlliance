@@ -9,7 +9,7 @@ import crypto from 'node:crypto';
 export const PUT: RequestHandler = async ({ request, locals }: any) => {
 	if (!locals?.user?.permissions?.includes?.(Permission.calendar_moderate)) return error(403, "Access denied.");
 
-	let { title, description, date, applicableSubteams, members } = await request.json();
+	let { title, description, date, durationMinutes, applicableSubteams, members } = await request.json();
 	if (!title || !date || isNaN(new Date(date).getTime())) return error(400, "Please fill out all necessary fields.");
 
 	try {
@@ -21,6 +21,7 @@ export const PUT: RequestHandler = async ({ request, locals }: any) => {
 			title,
 			description: description || null,
 			dateOf: new Date(date),
+			durationMinutes,
 			subteams: applicableSubteams || [],
 			members: members || []
 		} as any);

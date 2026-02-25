@@ -129,6 +129,7 @@
 		title = meetingData.title;
 		description = meetingData.description;
 		date = toLocalISOString(new Date(meetingData.dateOf));
+		durationMinutes = meetingData.durationMinutes;
 		subteams = meetingData.subteams;
 		for (let i = 0; i < members.length; i++) {
 			selectedMembers[i] = meetingData.members.includes(members[i].id);
@@ -607,7 +608,9 @@
 										-
 										{new Date(
 											meeting.dateOf.getTime() +
-												60 * 60 * 1000,
+												meeting.durationMinutes *
+													60 *
+													1000,
 										).toLocaleTimeString(undefined, {
 											hour: "2-digit",
 											minute: "2-digit",
