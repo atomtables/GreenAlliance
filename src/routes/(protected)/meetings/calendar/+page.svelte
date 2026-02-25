@@ -29,6 +29,8 @@
 	let selectedMeeting = $state("");
 	let selectedMeetingPresent = $state([]);
 	let selectedMeetingStatus = $state("");
+	let selectedMeetingPassed = $state(false);
+	let selectedMeetingStatuses = $state({});
 	let date = $state(toLocalISOString(today));
 	let title = $state("");
 	let description = $state("");
@@ -180,7 +182,7 @@
 	};
 
 	const getAttendance = async () => {
-		let res = await fetch("/api/attendees/" + selectedMeeting);
+		let res = await fetch("/api/meetingAttendees/" + selectedMeeting);
 		if (!res.ok) {
 			return [];
 		}
@@ -192,6 +194,7 @@
 		);
 
 		selectedMeetingPresent = newAttendance;
+		selectedMeetingStatuses = json.statusMap;
 	};
 
 	const saveAttendance = async () => {
@@ -202,7 +205,7 @@
 			}
 		}
 
-		let res = await fetch("/api/attendees/" + selectedMeeting, {
+		let res = await fetch("/api/meetingAttendees/" + selectedMeeting, {
 			method: "POST",
 			body: JSON.stringify({ userIds: payload }),
 		});
@@ -229,7 +232,9 @@
 	};
 
 	const getStatus = async () => {
-		let res = await fetch("/api/attendees/status/" + selectedMeeting);
+		let res = await fetch(
+			"/api/meetingAttendees/status/" + selectedMeeting,
+		);
 		if (!res.ok) {
 			return;
 		}
@@ -238,10 +243,13 @@
 	};
 
 	const updateStatus = async () => {
-		let res = await fetch("/api/attendees/status/" + selectedMeeting, {
-			method: "POST",
-			body: JSON.stringify({ status: selectedMeetingStatus }),
-		});
+		let res = await fetch(
+			"/api/meetingAttendees/status/" + selectedMeeting,
+			{
+				method: "POST",
+				body: JSON.stringify({ status: selectedMeetingStatus }),
+			},
+		);
 
 		if (!res.ok) {
 			await alert(
@@ -261,6 +269,26 @@
 			await alert(
 				"There was an error submitting your request. Try again later.",
 			);
+		}
+	};
+
+	const getAdminDialogActions = () => {
+		if (selectedMeetingPassed) {
+			return [
+				{
+					name: "Close",
+					action: () => (selectedMeetingPresent.length = 0),
+					close: true,
+				},
+				{
+					name: "Save Changes",
+					action: saveAttendance,
+					primary: true,
+					close: true,
+				},
+			];
+		} else {
+			return [{ name: "Close", action: () => null, close: true }];
 		}
 	};
 </script>
@@ -346,19 +374,7 @@
 		bind:open={selectedMeetingOpen}
 		{title}
 		{description}
-		actions={[
-			{
-				name: "Close",
-				action: () => (selectedMeetingPresent.length = 0),
-				close: true,
-			},
-			{
-				name: "Save Changes",
-				action: saveAttendance,
-				primary: true,
-				close: true,
-			},
-		]}
+		actions={getAdminDialogActions()}
 	>
 		<div class="flex flex-col gap-2 mb-4">
 			<div>
@@ -370,30 +386,57 @@
 				{subteams.length > 0 ? subteams.join(", ") : "None"}
 			</div>
 		</div>
-		<Table source={selectedMembers} bind:selected={selectedMeetingPresent}>
-			{#snippet header()}
-				<th>Name</th>
-				<th>Role</th>
-			{/snippet}
-			{#snippet template({ firstName, lastName, role }, index)}
-				<th class="px-2">{firstName + " " + lastName}</th>
-				<th class="px-2"
-					>{role === Role.administrator
-						? "adm."
-						: role === Role.coach
-							? "coa."
-							: role === Role.mentor
-								? "ment."
-								: role === Role.captain
-									? "capt."
-									: role === Role.lead
-										? "lead."
-										: role === Role.member
-											? "mem."
-											: "?"}
-				</th>
-			{/snippet}
-		</Table>
+		<div class="flex flex-col gap-2 mb-4">
+			<h1 class="pl-1">Select Members Present:</h1>
+		</div>
+		{#if selectedMeetingPassed}
+			<Table
+				source={selectedMembers}
+				bind:selected={selectedMeetingPresent}
+			>
+				{#snippet header()}
+					<th>Name</th>
+					<th>Role</th>
+				{/snippet}
+				{#snippet template({ firstName, lastName, role })}
+					<th class="px-2">{firstName + " " + lastName}</th>
+					<th class="px-2"
+						>{role === Role.administrator
+							? "adm."
+							: role === Role.coach
+								? "coa."
+								: role === Role.mentor
+									? "ment."
+									: role === Role.captain
+										? "capt."
+										: role === Role.lead
+											? "lead."
+											: role === Role.member
+												? "mem."
+												: "?"}
+					</th>
+				{/snippet}
+			</Table>
+		{:else}
+			<Table source={selectedMembers} checkable={false}>
+				{#snippet header()}
+					<th>Name</th>
+					<th>Status</th>
+				{/snippet}
+				{#snippet template({ firstName, lastName, id }, index)}
+					<th class="px-2">{firstName + " " + lastName}</th>
+					<th class="px-2">
+						{selectedMeetingStatuses?.[id] === "yes"
+							? "Yes"
+							: selectedMeetingStatuses?.[id] === "no"
+								? "No"
+								: selectedMeetingStatuses?.[id] === "maybe"
+									? "Maybe"
+									: "No Response"}
+					</th>
+				{/snippet}
+			</Table>
+		{/if}
 	</Dialog>
 {:else}
 	<Dialog
@@ -516,6 +559,12 @@
 									subteams = meeting.subteams;
 									selectedMeeting = meeting.id;
 									selectedMembers = [];
+									selectedMeetingStatuses = {};
+									if (meeting.dateOf < new Date()) {
+										selectedMeetingPassed = true;
+									} else {
+										selectedMeetingPassed = false;
+									}
 									for (let i = 0; i < members.length; i++) {
 										if (
 											meeting.members.includes(
