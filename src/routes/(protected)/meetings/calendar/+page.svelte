@@ -590,6 +590,14 @@
 												minute: "2-digit",
 											},
 										)}
+										-
+										{new Date(
+											meeting.dateOf.getTime() +
+												60 * 60 * 1000,
+										).toLocaleTimeString(undefined, {
+											hour: "2-digit",
+											minute: "2-digit",
+										})}
 									</span>
 									<span class="font-light">
 										{meeting.title}
