@@ -394,7 +394,19 @@
 		<div class="flex flex-col gap-2 mb-4">
 			<div>
 				<span class="font-bold">Date: </span>
-				{new Date(date).toLocaleString()}
+				{new Date(date).toLocaleString(undefined, {
+					month: "short",
+					day: "numeric",
+					hour: "2-digit",
+					minute: "2-digit",
+				})}
+				-
+				{new Date(
+					new Date(date).getTime() + durationMinutes * 60 * 1000,
+				).toLocaleTimeString(undefined, {
+					hour: "2-digit",
+					minute: "2-digit",
+				})}
 			</div>
 			<div>
 				<span class="font-bold">Subteams: </span>
@@ -463,7 +475,19 @@
 		<div class="flex flex-col gap-2 mb-4">
 			<div>
 				<span class="font-bold">Date: </span>
-				{new Date(date).toLocaleString()}
+				{new Date(date).toLocaleString(undefined, {
+					month: "short",
+					day: "numeric",
+					hour: "2-digit",
+					minute: "2-digit",
+				})}
+				-
+				{new Date(
+					new Date(date).getTime() + durationMinutes * 60 * 1000,
+				).toLocaleTimeString(undefined, {
+					hour: "2-digit",
+					minute: "2-digit",
+				})}
 			</div>
 			<div>
 				<span class="font-bold">Subteams: </span>
