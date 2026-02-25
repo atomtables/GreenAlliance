@@ -34,6 +34,7 @@
 	let date = $state(toLocalISOString(today));
 	let title = $state("");
 	let description = $state("");
+	let durationMinutes = $state(60);
 	let subteams = $state([]);
 	let selectedMembers = $state(new Array(members.length).fill(false));
 	let formError = $state();
@@ -54,6 +55,7 @@
 			title,
 			description,
 			date: dateObj,
+			durationMinutes,
 			applicableSubteams: $state.snapshot(subteams),
 			members: cleanedMembers,
 		};
@@ -310,7 +312,19 @@
 >
 	<Input name="Name" bind:value={title} />
 	<Input name="Description" bind:value={description} />
-	<Input type="datetime-local" name="Date" bind:value={date} />
+	<div class="flex flex-row items-end gap-2 my-2">
+		<div class="flex-1">
+			<Input type="datetime-local" name="Date" bind:value={date} />
+		</div>
+
+		<div class="w-32">
+			<Input
+				type="number"
+				name="Duration (minutes)"
+				bind:value={durationMinutes}
+			/>
+		</div>
+	</div>
 	<div class="flex flex-col">
 		<h2 class="pl-1">Applicable to subteams:</h2>
 		<div class="flex flex-row gap-4 flex-wrap">
