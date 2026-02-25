@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { pgTable, serial, text, timestamp, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, timestamp, boolean, integer } from 'drizzle-orm/pg-core';
 import * as crypto from 'node:crypto';
 import { json } from './common';
 import { users } from './users';
@@ -11,6 +11,7 @@ export const meetings = pgTable('meetings', {
 	title: text('title').notNull(),
 	description: text('description'),
 	dateOf: timestamp('date_of', { mode: 'date' }).notNull(),
+	durationMinutes: integer('duration_minutes').notNull().default(60),
 	subteams: text('subteams').array().notNull().default(([])),
 	members: text('members').array().notNull().default(([])),
 });

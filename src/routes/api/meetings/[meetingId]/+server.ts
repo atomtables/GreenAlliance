@@ -18,6 +18,8 @@ export const GET: RequestHandler = async ({ params, locals }: any) => {
 
 		if (!meeting) return error(404, "Meeting not found");
 
+		console.log(meeting.durationMinutes);
+
 		if (!meeting.members.includes(locals.user.id) && !locals.user.permissions?.includes?.(Permission.calendar_moderate)) {
 			return error(403, "Access denied");
 		}
