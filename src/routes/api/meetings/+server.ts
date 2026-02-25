@@ -25,6 +25,17 @@ export const PUT: RequestHandler = async ({ request, locals }: any) => {
 			members: members || []
 		} as any);
 
+		if (members && members.length > 0) {
+			await db.insert(schema.meetingAttendees).values(
+				members.map((userId: string) => ({
+					meetingId: id,
+					userId,
+					status: 'maybe',
+					present: false
+				}))
+			);
+		}
+
 		return json({ success: true, data: { id } }, { status: 201 });
 
 	} catch (e: any) {

@@ -6,22 +6,26 @@ import { db } from '$lib/server/db';
 import { eq } from 'drizzle-orm';
 
 export const GET: RequestHandler = async ({ params, locals }: any) => {
-	if (!locals?.user) return error(401, "Unauthorized");
+	if (!locals?.user?.permissions?.includes?.(Permission.calendar_moderate)) return error(401, "Unauthorized");
 
 	const { meetingId } = params;
 	if (!meetingId) return error(400, "Missing required parameter: meetingId");
 
 	try {
 		const attendees = await db
-			.select({ userId: schema.meetingAttendees.userId })
+			.select({ userId: schema.meetingAttendees.userId, status: schema.meetingAttendees.status })
 			.from(schema.meetingAttendees)
 			.where(eq(schema.meetingAttendees.meetingId, meetingId));
 
 		if (!attendees) return error(404, "No attendees found or meeting does not exist");
 
 		const userIds = attendees.map(a => a.userId);
+		const statusMap = {};
+		attendees.forEach(a => {
+			statusMap[a.userId] = a.status;
+		});
 
-		return json({ success: true, userIds }, { status: 200 });
+		return json({ success: true, userIds, statusMap }, { status: 200 });
 
 	} catch (e: any) {
 		if (e.name === "HttpError") throw e;
