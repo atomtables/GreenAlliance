@@ -17,10 +17,13 @@ export const routeRules: RouteRule[] = [
     { path: "/account/logout", auth: true, permissions: [Permission.exist] },
     { path: "/meetings/calendar", auth: true, permissions: [Permission.exist, Permission.calendar] },
     { path: "/users", auth: true, permissions: [Permission.exist, Permission.users] },
+    { path: "/messages", auth: true, permissions: [Permission.exist, Permission.message] },
 
     { path: "/api/meetings", auth: true, permissions: [Permission.exist, Permission.calendar_moderate], methods: ["PUT", "DELETE"] },
     { path: "/api/users/joincodes", auth: true, permissions: [Permission.exist, Permission.users_modify], methods: ["PUT", "DELETE"] },
     { path: "/api/users/signin", auth: false, methods: ["POST"] },
+    { path: "/api/messages", auth: true, permissions: [Permission.exist, Permission.message], methods: ["GET", "PUT", "DELETE"] },
+    { path: "/api/messages/[chatId]", auth: true, permissions: [Permission.exist, Permission.message], methods: ["GET", "POST"] },
 ];
 
 const normalizePath = (value: string) => {

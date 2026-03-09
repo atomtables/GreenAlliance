@@ -106,6 +106,7 @@
                 { name: "Modify Members/Groups", url: "/users/modify" },
             ]}
         />
+        <HeaderTab name="Messages" href="/messages" showOnAuth />
         </div>
     </div>
 </header>
