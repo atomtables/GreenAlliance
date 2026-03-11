@@ -1,5 +1,6 @@
 import { RequiresPermissions } from "$lib/functions/requirePermissions";
 import { db } from "$lib/server/db";
+import { chatParticipants } from "$lib/server/db/schema";
 import { Permission, type User } from "$lib/types/types";
 import type { RequestHandler } from "@sveltejs/kit";
 import { produce } from "sveltekit-sse";
@@ -29,12 +30,13 @@ export const GET: RequestHandler = async ({ params, locals }) => {
         _clients[user.id][sessionId] = emit;
         emit("session", sessionId);
 
+        // send current online statuses to the new user
         for (const userId in _clients) {
-            if (userId === user?.id) continue; // don't send to self
-            emit("presence", JSON.stringify({ userId: user.id, status: "online" }));
+            if (userId === user.id) continue;
+            emit("presence", JSON.stringify({ userId, status: "online" }));
         }
 
-        // now announce that this guy is online
+        // now announce that this user is online to everyone else
         for (const userId in _clients) {
             if (userId === user.id) continue; // don't send to self
             for (const sessionId in _clients[userId]) {
@@ -56,4 +58,33 @@ export const GET: RequestHandler = async ({ params, locals }) => {
             }
         }
     })
+}
+
+// Handler for typing indicator
+export const POST: RequestHandler = async ({ request, locals, url }) => {
+    if (!RequiresPermissions(locals, [Permission.message]) || !locals.user) {
+        return new Response(JSON.stringify({ error: "Insufficient permissions" }), { status: 401 });
+    }
+
+    const chatId = url.searchParams.get("chatId");
+    const action = url.searchParams.get("action");
+
+    if (action === "typing" && chatId) {
+        // Broadcast typing indicator to chat participants only
+        const participants = await db.select({ userId: chatParticipants.userId })
+            .from(chatParticipants)
+            .where(eq(chatParticipants.chatId, chatId));
+
+        for (const { userId } of participants) {
+            if (userId === locals.user.id) continue;
+            if (_clients?.[userId]) {
+                for (const sessionId in _clients[userId]) {
+                    _clients[userId][sessionId]("typing", JSON.stringify({ userId: locals.user.id, chatId }));
+                }
+            }
+        }
+        return new Response(null, { status: 204 });
+    }
+
+    return new Response(JSON.stringify({ error: "Invalid action" }), { status: 400 });
 }

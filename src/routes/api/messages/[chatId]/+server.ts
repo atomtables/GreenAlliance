@@ -1,6 +1,6 @@
 import { RequiresPermissions } from "$lib/functions/requirePermissions";
 import { db } from "$lib/server/db";
-import { messages } from "$lib/server/db/schema";
+import { messages, chatParticipants } from "$lib/server/db/schema";
 import { normaliseChatFromDatabase, normaliseMessageFromDatabase, type Message } from "$lib/types/messages";
 import { Permission } from "$lib/types/types";
 import type { RequestHandler } from "@sveltejs/kit";
@@ -8,6 +8,26 @@ import { and, count, desc, eq, gt, lt, ne, sql } from "drizzle-orm";
 import { produce } from "sveltekit-sse";
 import { _clients as clients } from "../stream/+server";
 import { messagesReactions, messagesReadReceipts } from "$lib/server/db/schema/messages";
+
+const MAX_MESSAGE_LENGTH = 5000;
+
+/**
+ * Broadcast an SSE event only to participants of a specific chat.
+ */
+async function broadcastToChat(chatId: string, senderId: string, eventName: string, data: string) {
+    const participants = await db.select({ userId: chatParticipants.userId })
+        .from(chatParticipants)
+        .where(eq(chatParticipants.chatId, chatId));
+
+    for (const { userId } of participants) {
+        if (userId === senderId) continue;
+        if (clients?.[userId]) {
+            for (const sessionId in clients[userId]) {
+                clients[userId][sessionId](eventName, data);
+            }
+        }
+    }
+}
 
 // handler for the user to set which message they have read up to in this chat
 export const HEAD: RequestHandler = async ({ request, params, locals }) => {
@@ -40,20 +60,22 @@ export const HEAD: RequestHandler = async ({ request, params, locals }) => {
         return new Response(null, { status: 500 });
     }
 
-    console.debug(
-        `${request.url}: Updated read receipt to message ${messageId} for user ${locals.user?.id} in chat ${params.chatId}, there are now ${await db
-            .select()
+    // Compute actual unread count after updating read receipt
+    let unreadCount = 0;
+    try {
+        const result = await db.select({ value: count() })
             .from(messages)
-            .where(() => and(eq(messages.chatId, params.chatId || ""), gt(messages.id, messageId || "0"), ne(messages.deleted, true)))} unread messages.`
-    );
-    console.log(
-        await db
-            .select()
-            .from(messages)
-            .where(() => and(eq(messages.chatId, params.chatId || ""), gt(messages.id, messageId || "0"), ne(messages.deleted, true)))
-    );
+            .where(and(
+                eq(messages.chatId, params.chatId || ""),
+                gt(messages.id, messageId || "0"),
+                ne(messages.deleted, true)
+            ));
+        unreadCount = result[0].value;
+    } catch (e) {
+        console.error(`${request.url}: Error computing unread count: `, e);
+    }
 
-    return new Response(null, { status: 204, headers: { "Cache-Control": "no-store", "X-Unread-Messages": new String(0).toString(), "X-Last-Message-Id": messageId } });
+    return new Response(null, { status: 204, headers: { "Cache-Control": "no-store", "X-Unread-Messages": String(unreadCount), "X-Last-Message-Id": messageId } });
 };
 
 // handler to get historical messages for a specified chat id
@@ -135,6 +157,10 @@ export const POST: RequestHandler = async ({ request, locals, params }) => {
         return new Response(JSON.stringify({ error: "Please provide all required fields" }), { status: 400 });
     }
 
+    if (content.length > MAX_MESSAGE_LENGTH) {
+        return new Response(JSON.stringify({ error: `Message content exceeds maximum length of ${MAX_MESSAGE_LENGTH} characters` }), { status: 400 });
+    }
+
     // let's make sure the user is in the chat
     try {
         const chatRecord = await db.query.chats
@@ -189,16 +215,8 @@ export const POST: RequestHandler = async ({ request, locals, params }) => {
 
         const normalisedItem = normaliseMessageFromDatabase(item as any);
 
-        // async notify other clients
-        new Promise<void>((res) => {
-            for (const userId in clients ?? {}) {
-                if (userId === locals.user?.id) continue; // don't send to self
-                for (const sessionId in clients[userId]) {
-                    clients[userId][sessionId]("message", JSON.stringify({ message: normalisedItem }));
-                }
-            }
-            res();
-        });
+        // notify only chat participants
+        broadcastToChat(chatId!, locals.user.id, "message", JSON.stringify({ message: normalisedItem }));
     } catch (e) {
         console.error(`${request.url}: Error creating message: `, e);
         return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500 });
@@ -232,7 +250,6 @@ export const DELETE: RequestHandler = async ({ request, locals, params }) => {
                 newmsg.deleted = msg.deleted;
                 return newmsg;
             });
-        console.log(message);
     } catch (e) {
         console.error(`${request.url}: Error retrieving message: `, e);
         return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500 });
@@ -260,16 +277,8 @@ export const DELETE: RequestHandler = async ({ request, locals, params }) => {
         return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500 });
     }
 
-    // notify other clients
-    new Promise<void>((res) => {
-        for (const userId in clients ?? {}) {
-            if (userId === locals.user?.id) continue; // don't send to self
-            for (const sessionId in clients[userId]) {
-                clients[userId][sessionId]("message-deleted", JSON.stringify({ messageId, chatId: params.chatId }));
-            }
-        }
-        res();
-    });
+    // notify only chat participants
+    broadcastToChat(params.chatId!, locals.user?.id ?? "", "message-deleted", JSON.stringify({ messageId, chatId: params.chatId }));
 
     return new Response(null, { status: 204 });
 };
@@ -285,6 +294,10 @@ export const PATCH: RequestHandler = async ({ request, locals, params }) => {
     let newContent = ((formData.get("content") as string) || null)?.trim();
     if (!messageId || !newContent || newContent.length === 0) {
         return new Response(JSON.stringify({ error: "Please provide all required fields" }), { status: 400 });
+    }
+
+    if (newContent.length > MAX_MESSAGE_LENGTH) {
+        return new Response(JSON.stringify({ error: `Message content exceeds maximum length of ${MAX_MESSAGE_LENGTH} characters` }), { status: 400 });
     }
 
     let message: Message | null;
@@ -320,7 +333,6 @@ export const PATCH: RequestHandler = async ({ request, locals, params }) => {
     let newMessage: Message;
     try {
         // update the message content and edit history
-        console.log("new message edit history: ", [...message.editHistory ?? [], { content: message.content, editedAt: new Date().toISOString() }]);
         const newEditHistory = [...message.editHistory ?? [], { content: message.content, editedAt: new Date().toISOString() }];
         newMessage = normaliseMessageFromDatabase(
             (
@@ -340,16 +352,8 @@ export const PATCH: RequestHandler = async ({ request, locals, params }) => {
         return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500 });
     }
 
-    // notify other clients
-    new Promise<void>((res) => {
-        for (const userId in clients ?? {}) {
-            if (userId === locals.user?.id) continue; // don't send to self
-            for (const sessionId in clients[userId]) {
-                clients[userId][sessionId]("message-edited", JSON.stringify({ message: newMessage }));
-            }
-        }
-        res();
-    });
+    // notify only chat participants
+    broadcastToChat(params.chatId!, locals.user.id, "message-edited", JSON.stringify({ message: newMessage }));
 
     const response = new Response(null, { status: 204 });
     return response;
@@ -433,16 +437,8 @@ export const PUT: RequestHandler = async ({ request, locals, params }) => {
             return reacMap;
         });
         
-    // notify other clients
-    new Promise<void>((res) => {
-        for (const userId in clients ?? {}) {
-            if (userId === locals.user?.id) continue; // don't send to self
-            for (const sessionId in clients[userId]) {
-                clients[userId][sessionId]("message-reacted", JSON.stringify({ messageId, chatId: params.chatId, reactions }));
-            }
-        }
-        res();
-    });
+    // notify only chat participants
+    broadcastToChat(params.chatId!, locals.user?.id ?? "", "message-reacted", JSON.stringify({ messageId, chatId: params.chatId, reactions }));
 
     return new Response(JSON.stringify({ reactions }), { status: 201 });
 };

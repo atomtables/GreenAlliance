@@ -13,6 +13,15 @@
 
     let { data } = $props();
 
+    /** Escape HTML special chars to prevent XSS when injecting text into raw HTML */
+    const escapeHtml = (text: string): string =>
+        text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+
     // This is our simple SSE connection to get live updates about new messages
     let conn: EventSource | null = $state(null);
     // The chats variable should never change significantly
@@ -54,6 +63,24 @@
     let isGroupChatMode = $state(false);
     let selectedGroupMembers = $state<string[]>([]);
     let groupChatName = $state("");
+    // Ref to the scroll container (avoids fragile querySelector)
+    let scrollContainer: HTMLElement | undefined = $state(undefined);
+    // Chat sidebar search/filter
+    let chatSearchQuery = $state("");
+    // Mobile sidebar visibility
+    let showMobileSidebar = $state(true);
+    // Typing indicators: chatId → set of user IDs currently typing
+    let typingUsers = $state<{ [chatId: string]: Set<string> }>({});
+    let typingTimeout: { [chatId: string]: { [userId: string]: ReturnType<typeof setTimeout> } } = {};
+    // Presence tracking: userId → "online" | "offline"
+    let userPresence = $state<{ [userId: string]: string }>({});
+    // Track whether current user is typing (for debounced typing indicator)
+    let typingSent = $state(false);
+    let typingTimer: ReturnType<typeof setTimeout> | null = null;
+    // Message search
+    let showMessageSearch = $state(false);
+    let messageSearchQuery = $state("");
+    let messageSearchResults = $state<Message[]>([]);
 
     // Group chat member colors (high-contrast with white text)
     const GROUP_MEMBER_COLORS = [
@@ -115,7 +142,6 @@
         });
 
         source.addEventListener("message", async (ev) => {
-            console.log("[SSE:message]", ev.data);
             const msg: Message = JSON.parse(ev.data).message;
             if (messages[msg.chatId]) {
                 messages[msg.chatId] = [...messages[msg.chatId], msg];
@@ -127,35 +153,53 @@
             if (currentlySelectedChatId === msg.chatId) {
                 updateChatLists(msg.chatId, msg);
                 // scroll to bottom if at bottom
-                if (atBottom) {
+                if (atBottom && scrollContainer) {
                     await tick();
-                    const container = document.querySelector(".flex-1.overflow-auto.p-5");
-                    container.scrollTop = container.scrollHeight;
+                    scrollContainer.scrollTop = scrollContainer.scrollHeight;
                 }
                 if (document.hasFocus()) {
                     updateLastReadForChat(msg.chatId, msg.id);
-                } else {
-                    chat!.readReceipts.count += 1;
+                } else if (chat?.readReceipts) {
+                    chat.readReceipts.count += 1;
                 }
-            } else {
-                chat!.readReceipts.count += 1;
+            } else if (chat?.readReceipts) {
+                chat.readReceipts.count += 1;
             }
         });
         source.addEventListener("session", logEvent("session"));
-        source.addEventListener("presence", logEvent("presence"));
+        source.addEventListener("presence", (ev) => {
+            const { userId, status } = JSON.parse(ev.data);
+            userPresence[userId] = status;
+        });
+        source.addEventListener("typing", (ev) => {
+            const { userId, chatId } = JSON.parse(ev.data);
+            if (userId === data.user.id) return;
+            if (!typingUsers[chatId]) typingUsers[chatId] = new Set();
+            typingUsers[chatId] = new Set([...typingUsers[chatId], userId]);
+            // Clear typing after 3 seconds of no typing event
+            if (!typingTimeout[chatId]) typingTimeout[chatId] = {};
+            if (typingTimeout[chatId][userId]) clearTimeout(typingTimeout[chatId][userId]);
+            typingTimeout[chatId][userId] = setTimeout(() => {
+                if (typingUsers[chatId]) {
+                    const newSet = new Set(typingUsers[chatId]);
+                    newSet.delete(userId);
+                    typingUsers[chatId] = newSet;
+                }
+            }, 3000);
+        });
         source.addEventListener("message-deleted", async (ev) => {
-            console.log("[SSE:message-deleted]", ev.data);
             const { messageId, chatId } = JSON.parse(ev.data);
             if (messages[chatId]) {
                 messages[chatId] = messages[chatId].filter((m) => m.id !== messageId);
             }
-            if (chats.find((v) => v.id == chatId)?.lastMessage?.id === messageId) {
-                const chat = chats.find((v) => v.id == chatId);
-                chat!.lastMessage = null;
+            const chat = chats.find((v) => v.id == chatId);
+            if (chat) {
+                if (chat.lastMessage?.id === messageId) {
+                    chat.lastMessage = null;
+                }
             }
         });
         source.addEventListener("message-edited", async (ev) => {
-            console.log("[SSE:message-edited]", ev.data);
             const { message } = JSON.parse(ev.data);
             if (messages[message.chatId]) {
                 messages[message.chatId] = messages[message.chatId].map((v) => {
@@ -163,13 +207,12 @@
                     else return message;
                 });
             }
-            if (chats.find((v) => v.id == message.chatId)?.lastMessage?.id === message.id) {
-                const chat = chats.find((v) => v.id == message.chatId);
-                chat!.lastMessage = message;
+            const chat = chats.find((v) => v.id == message.chatId);
+            if (chat && chat.lastMessage?.id === message.id) {
+                chat.lastMessage = message;
             }
         });
         source.addEventListener("message-reacted", async (ev) => {
-            console.log("[SSE:message-reacted]", ev.data);
             const { messageId, chatId, reactions } = JSON.parse(ev.data);
             if (messages[chatId]) {
                 messages[chatId] = messages[chatId].map((v) => {
@@ -260,7 +303,11 @@
 
     // Whenever the currently selected chat changes, we load its messages if we haven't already
     $effect(() => {
-        if (currentlySelectedChatId) isLoadingMore = false;
+        if (currentlySelectedChatId) {
+            isLoadingMore = false;
+            // On mobile, hide sidebar when a chat is selected
+            showMobileSidebar = false;
+        }
         if (currentlySelectedChatId && !messages[currentlySelectedChatId])
             (async () => {
                 const res = await fetch(`/api/messages/${currentlySelectedChatId}`);
@@ -275,16 +322,15 @@
                     currentlySelectedChatId = null;
                 }
                 await tick();
-                const container = document.querySelector(".flex-1.overflow-auto.p-5");
-                if (atBottom) {
-                    container.scrollTop = container.scrollHeight;
+                if (atBottom && scrollContainer) {
+                    scrollContainer.scrollTop = scrollContainer.scrollHeight;
                 }
                 if (document.hasFocus()) {
                     let chat = currentlySelectedChat;
                     let message = messages[currentlySelectedChatId]?.findLast((v) => v);
-                    if (!message) return;
-                    chat!.readReceipts.count = 0;
-                    chat!.readReceipts.messageId = message.id;
+                    if (!message || !chat?.readReceipts) return;
+                    chat.readReceipts.count = 0;
+                    chat.readReceipts.messageId = message.id;
                     fetch(`/api/messages/${currentlySelectedChatId}?messageId=${message.id}`, {
                         method: "HEAD",
                     });
@@ -330,14 +376,23 @@
             messages[currentlySelectedChatId] = [...(messages[currentlySelectedChatId] || []), sentMessage];
             updateChatLists(currentlySelectedChatId, sentMessage);
             newMessage = "";
-            if (atBottom) {
+            if (atBottom && scrollContainer) {
                 await tick();
-                const container = document.querySelector(".flex-1.overflow-auto.p-5");
-                container.scrollTop = container.scrollHeight;
+                scrollContainer.scrollTop = scrollContainer.scrollHeight;
             }
         } else {
-            console.error("Failed to send message:", res.statusText);
+            const err = await res.json().catch(() => null);
+            alert("Error", err?.error || "Failed to send message");
         }
+    };
+    const sendTypingIndicator = () => {
+        if (!currentlySelectedChatId) return;
+        if (!typingSent) {
+            typingSent = true;
+            fetch(`/api/messages/stream?chatId=${currentlySelectedChatId}&action=typing`, { method: "POST" }).catch(() => {});
+        }
+        if (typingTimer) clearTimeout(typingTimer);
+        typingTimer = setTimeout(() => { typingSent = false; }, 2000);
     };
     const editMessage = async (message: Message) => {
         const newContent = (await prompt("Edit message", message.content, { startingValue: message.content, promptValue: "Edit message" }))?.trim();
@@ -355,7 +410,8 @@
         if (res.ok) {
             messages[message.chatId] = messages[message.chatId].map((m) => (m.id === message.id ? { ...m, content: newContent, edited: true } : m));
         } else {
-            console.error("Failed to edit message:", res.statusText);
+            const err = await res.json().catch(() => null);
+            alert("Error", err?.error || "Failed to edit message");
         }
         openMenuForMessage = null;
     };
@@ -366,10 +422,10 @@
                     <div class="self-end max-w-xs flex flex-col items-end gap-1 group">
                         <div class="flex items-end gap-2 relative">
                             <div class="relative bg-green-600 text-white p-3 shadow-md break-words rounded-md">
-                                ${message.content}
+                                ${escapeHtml(message.content)}
                                 <div class="absolute -right-2 bottom-0 w-0 h-0 border-solid border-t-[15px] border-t-transparent border-l-[15px] border-l-green-600"></div>
                             </div>
-                          2xs  <img src=${data.user?.avatar || "/noprofile.png"} alt="avatar" class="w-7 h-7 roundeext-xsd-full bg-gray-500 mb-1" />
+                            <img src=${data.user?.avatar || "/noprofile.png"} alt="avatar" class="w-7 h-7 rounded-full bg-gray-500 mb-1" />
                         </div>
                         <div class="text-[11px] text-white/80 pr-1">You • ${formatDate(stamp)}</div>
                     </div>
@@ -393,7 +449,7 @@
                 chat.lastMessage = null;
             }
         } else {
-            console.error("Failed to delete message:", res.statusText);
+            alert("Error", "Failed to delete message");
         }
         openMenuForMessage = null;
     };
@@ -523,7 +579,7 @@
 
 <div class="w-full h-full lg:p-10">
     <div class="w-full h-full flex flex-row flex-nowrap border-gray-600">
-        <div class="shadow-[25px_-5px_20px_-12px_rgb(0_0_0_/_0.25)] w-64 lg:w-96 bg-gray-600 shrink-0">
+        <div class="shadow-[25px_-5px_20px_-12px_rgb(0_0_0_/_0.25)] {showMobileSidebar ? 'w-full md:w-64 lg:w-96' : 'hidden md:block md:w-64 lg:w-96'} bg-gray-600 shrink-0">
             <div class="w-full bg-green-700 font-bold text-xl flex justify-between items-center py-2 shadow-2xl">
                 <div class="px-4">CHATS</div>
                 <div class="flex flex-row gap-2" data-new-chat-dropdown>
@@ -623,7 +679,18 @@
             {:else if chats.length === 0}
                 <div class="w-full flex justify-center items-center p-5 gap-2 font-bold text-lg text-gray-300">No chats available.</div>
             {:else}
+                <div class="px-2 py-2">
+                    <input
+                        bind:value={chatSearchQuery}
+                        type="text"
+                        placeholder="Search chats..."
+                        class="w-full bg-gray-700 text-white text-sm px-3 py-2 rounded placeholder-gray-400 border-0 focus:outline-none focus:ring-1 focus:ring-green-500"
+                    />
+                </div>
                 {#each chats.filter((v) => v) as chat, ind}
+                    {#await data.users then users}
+                        {@const chatName = chat.isGroup ? (chat.name ?? "Group Chat") : (() => { const o = chat.participantIds.find((id) => id !== data.user.id); const u = users.find((u) => u.id === o); return u ? `${u.firstName} ${u.lastName}` : "Unknown User"; })()}
+                        {#if chatSearchQuery === "" || chatName.toLowerCase().includes(chatSearchQuery.toLowerCase())}
                     <button
                         onclick={() => {
                             currentlySelectedChatId = chat.id;
@@ -681,15 +748,17 @@
                                 </div>
                             </div>
                         </div>
-                        {#if chat.readReceipts.count > 0}
+                        {#if chat.readReceipts?.count > 0}
                             <div class="text-white bg-green-600 grid place-items-center aspect-square w-5 text-xs m-1 rounded-full">{chat.readReceipts.count}</div>
                         {/if}
                     </button>
+                        {/if}
+                    {/await}
                 {/each}
             {/if}
         </div>
         <div
-            class="bg-gray-600/50 flex-1 grow-1"
+            class="bg-gray-600/50 flex-1 grow-1 {!showMobileSidebar ? 'block' : 'hidden md:block'}"
         >
             {#await data.users then users}
                 {@const chat = currentlySelectedChat}
@@ -701,7 +770,7 @@
                     {#snippet chatBubble(isMine, message, tail, stamp, reactionGroups, i)}
                         {@const msgAuthor = !isMine ? (chat.isGroup ? users.find(u => u.id === message.author) : user) : null}
                         {@const bubbleBgColor = isMine ? 'inherit' : (chat.isGroup ? getGroupMemberColorHex(message.author) : 'inherit')}
-                        <div class="{isMine ? 'self-end' : 'self-start'} max-w-1/2 flex flex-col {isMine ? 'items-end' : 'items-start'} gap-1 group" data-menu-container>
+                        <div class="{isMine ? 'self-end' : 'self-start'} max-w-1/2 flex flex-col {isMine ? 'items-end' : 'items-start'} gap-1 group" data-menu-container title="{!tail ? formatDate(stamp) : ''}">
                             <!-- {#if !isMine && chat.isGroup && (i === 0 || messages[chat.id][i-1]?.author !== message.author)}
                                 <div class="text-xs font-semibold pl-9 pb-0.5" style="color: {getGroupMemberColorHex(message.author)};">
                                     {msgAuthor ? toTitleCase(`${msgAuthor.firstName} ${msgAuthor.lastName}`) : "Unknown"}
@@ -786,7 +855,13 @@
                                     </div>
                                     {message.content}
                                     {#if tail}
-                                        <div class="absolute {isMine ? '-right-2' : '-left-2'} bottom-0 w-0 h-0 border-solid border-t-[15px] border-t-transparent {isMine ? 'border-l-[15px] border-l-green-600' : 'border-r-[15px] border-r-gray-600'}"></div>
+                                        {#if isMine}
+                                            <div class="absolute -right-2 bottom-0 w-0 h-0 border-solid border-t-[15px] border-t-transparent border-l-[15px] border-l-green-600"></div>
+                                        {:else if chat.isGroup}
+                                            <div class="absolute -left-2 bottom-0 w-0 h-0 border-solid border-t-[15px] border-t-transparent border-r-[15px]" style="border-right-color: {getGroupMemberColorHex(message.author)};"></div>
+                                        {:else}
+                                            <div class="absolute -left-2 bottom-0 w-0 h-0 border-solid border-t-[15px] border-t-transparent border-r-[15px] border-r-gray-600"></div>
+                                        {/if}
                                     {/if}
                                     {#if message.edited}
                                         <div class="text-[0.625rem] text-white/70 italic pt-0.5 select-none">Edited</div>
@@ -807,10 +882,32 @@
                     {/snippet}
                     <div class="flex flex-col gap-0 inset-0 h-full">
                         <div class="w-full bg-green-700 font-medium text-xl flex justify-between items-center p-2 shadow-2xl">
-                            <div class="px-2">
-                                {toTitleCase(chatDisplayName)}
+                            <div class="flex items-center gap-1">
+                                <button class="md:hidden p-1" onclick={() => { showMobileSidebar = true; currentlySelectedChatId = null; }}>
+                                    <span class="material-symbols-outlined">arrow_back</span>
+                                </button>
+                                <div class="px-2 flex flex-col">
+                                    <span>{toTitleCase(chatDisplayName)}</span>
+                                    {#if !chat.isGroup && other}
+                                        {@const presence = userPresence[other]}
+                                        {#if presence === "online"}
+                                            <span class="text-xs font-normal text-green-200 flex items-center gap-1">
+                                                <span class="inline-block w-2 h-2 rounded-full bg-green-300"></span> Online
+                                            </span>
+                                        {/if}
+                                    {/if}
+                                    {#if chat.isGroup}
+                                        {@const onlineCount = chat.participantIds.filter(id => id !== data.user.id && userPresence[id] === "online").length}
+                                        {#if onlineCount > 0}
+                                            <span class="text-xs font-normal text-green-200">{onlineCount} online</span>
+                                        {/if}
+                                    {/if}
+                                </div>
                             </div>
                             <div class="flex flex-row gap-2">
+                                <IconButton onclick={() => { showMessageSearch = !showMessageSearch; messageSearchQuery = ""; messageSearchResults = []; }}>
+                                    <span class="material-symbols-outlined icons-fill">search</span>
+                                </IconButton>
                                 {#if !chat.isGroup && user?.phone}
                                     <IconButton onclick={() => (window.location.href = `tel:${user.phone}`)}>
                                         <span class="material-symbols-outlined icons-fill">phone</span>
@@ -819,10 +916,74 @@
                                 {#if !chat.isGroup}
                                     <IconButton onclick={() => (window.location.href = `mailto:${user.email}`)}><span class="material-symbols-outlined icons-fill">email</span></IconButton>
                                 {/if}
+                                {#if chat.isGroup}
+                                    <IconButton onclick={async () => {
+                                        const yes = await confirm("Leave Group", `Are you sure you want to leave "${toTitleCase(chat.name ?? 'this group chat')}"?`);
+                                        if (!yes) return;
+                                        const formData = new FormData();
+                                        formData.append("chatId", chat.id);
+                                        const res = await fetch("/api/messages", { method: "DELETE", body: formData });
+                                        if (res.ok) {
+                                            chats = chats.filter(c => c.id !== chat.id);
+                                            currentlySelectedChatId = null;
+                                            showMobileSidebar = true;
+                                        } else {
+                                            alert("Error", "Failed to leave group chat");
+                                        }
+                                    }}>
+                                        <span class="material-symbols-outlined icons-fill">logout</span>
+                                    </IconButton>
+                                {/if}
                                 <IconButton onclick={() => null}><span class="material-symbols-outlined icons-fill">info</span></IconButton>
                             </div>
                         </div>
+                        {#if showMessageSearch}
+                            <div class="bg-gray-700 px-3 py-2 flex items-center gap-2 border-b border-gray-600">
+                                <span class="material-symbols-outlined text-gray-400">search</span>
+                                <input
+                                    bind:value={messageSearchQuery}
+                                    type="text"
+                                    placeholder="Search messages..."
+                                    class="flex-1 bg-transparent text-white text-sm placeholder-gray-400 border-0 focus:outline-none focus:ring-0"
+                                    oninput={() => {
+                                        if (messageSearchQuery.trim().length > 0 && messages[chat.id]) {
+                                            const q = messageSearchQuery.toLowerCase();
+                                            messageSearchResults = messages[chat.id].filter(m => m.content.toLowerCase().includes(q));
+                                        } else {
+                                            messageSearchResults = [];
+                                        }
+                                    }}
+                                />
+                                <button onclick={() => { showMessageSearch = false; messageSearchQuery = ""; messageSearchResults = []; }} class="text-gray-400 hover:text-white">
+                                    <span class="material-symbols-outlined">close</span>
+                                </button>
+                            </div>
+                            {#if messageSearchQuery.trim().length > 0}
+                                <div class="bg-gray-750 max-h-40 overflow-y-auto border-b border-gray-600">
+                                    {#if messageSearchResults.length === 0}
+                                        <div class="text-sm text-gray-400 text-center py-2">No results found</div>
+                                    {:else}
+                                        {#each messageSearchResults as result}
+                                            <button
+                                                class="block w-full text-left px-4 py-2 text-sm hover:bg-neutral-500/40 text-gray-200 truncate"
+                                                onclick={() => {
+                                                    const el = document.getElementById("message-" + result.id);
+                                                    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+                                                    showMessageSearch = false;
+                                                    messageSearchQuery = "";
+                                                    messageSearchResults = [];
+                                                }}
+                                            >
+                                                {result.content.slice(0, 80)}{result.content.length > 80 ? "..." : ""}
+                                            </button>
+                                        {/each}
+                                    {/if}
+                                </div>
+                            {/if}
+                        {/if}
+                        <div class="relative flex-1 flex flex-col">
                         <div 
+                            bind:this={scrollContainer}
                             class="flex-1 overflow-auto p-5"
                             onscroll={async (event: Event) => {
                                 const target = event.target as HTMLElement;
@@ -830,7 +991,6 @@
                                 atBottom = target.scrollHeight - target.scrollTop - target.clientHeight <= threshold;
 
                                 const chatId = currentlySelectedChatId;
-                                console.log(target.scrollTop, target.scrollHeight, target.clientHeight, atBottom, isLoadingMore, allLoaded[chatId]);
                                 if (target.scrollTop <= 20 && !isLoadingMore && !allLoaded[chatId]) {
                                     isLoadingMore = true;
                                     const currentMessages = messages[chatId];
@@ -903,8 +1063,30 @@
                                 </div>
                             {/if}
                         </div>
+                        {#if !atBottom}
+                            <button
+                                class="absolute bottom-4 right-4 z-20 bg-green-600 hover:bg-green-500 text-white rounded-full w-10 h-10 shadow-lg flex items-center justify-center transition-colors"
+                                onclick={async () => {
+                                    if (scrollContainer) {
+                                        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+                                    }
+                                }}
+                            >
+                                <span class="material-symbols-outlined">keyboard_arrow_down</span>
+                            </button>
+                        {/if}
+                        </div>
                         <div>
-                            <div class="w-full bg-gray-700 p-2 flex flex-row gap- items-center">
+                            {#if typingUsers[chat.id]?.size > 0}
+                                {@const typingArr = [...typingUsers[chat.id]]}
+                                <div class="px-4 py-1 text-xs text-gray-300 italic bg-gray-700/50">
+                                    {#await data.users then users}
+                                        {@const names = typingArr.map(id => { const u = users.find(u => u.id === id); return u ? toTitleCase(u.firstName) : "Someone"; })}
+                                        {names.join(", ")} {names.length === 1 ? "is" : "are"} typing...
+                                    {/await}
+                                </div>
+                            {/if}
+                            <div class="w-full bg-gray-700 p-2 flex flex-row gap-1 items-end">
                                 <div class="relative">
                                     {#if showEmojiPicker}
                                         <div class="absolute bottom-full left-0 mb-2 z-50" transition:scale={{ duration: 150, start: 0.9 }}>
@@ -915,8 +1097,8 @@
                                         <span class="material-symbols-outlined icons-fill">emoji_emotions</span>
                                     </IconButton>
                                 </div>
-                                <div class="relative flex-1 group -mt-1.5">
-                                    <input bind:value={newMessage} type="text" placeholder="Type a message..." class="w-full bg-gray-700 text-white px-2 pt-2 pb-1 placeholder-gray-300 border-0 focus:outline-none focus:ring-0 focus:border-transparent" onkeydown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }} />
+                                <div class="relative flex-1 group">
+                                    <textarea bind:value={newMessage} placeholder="Type a message..." rows="1" class="w-full bg-gray-700 text-white px-2 pt-2 pb-1 placeholder-gray-300 border-0 focus:outline-none focus:ring-0 focus:border-transparent resize-none max-h-32 overflow-y-auto" style="field-sizing: content;" onkeydown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }} oninput={() => sendTypingIndicator()}></textarea>
                                     <div class="absolute left-2 right-2 bottom-0 h-px bg-gray-600"></div>
                                     <div class="absolute left-2 right-2 bottom-0 h-0.5 bg-green-400 scale-x-0 group-focus-within:scale-x-100 transition-transform duration-200 origin-left"></div>
                                 </div>
@@ -925,6 +1107,12 @@
                                 </IconButton>
                             </div>
                         </div>
+                    </div>
+                {:else}
+                    <div class="flex flex-col items-center justify-center h-full text-gray-400 gap-3">
+                        <span class="material-symbols-outlined text-6xl">chat</span>
+                        <p class="text-lg font-medium">Select a chat to start messaging</p>
+                        <p class="text-sm">Choose a conversation from the sidebar or start a new chat.</p>
                     </div>
                 {/if}
             {/await}

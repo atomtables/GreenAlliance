@@ -67,11 +67,6 @@ export const GET: RequestHandler = async ({ locals }) => {
         if (!chat) continue;
         if (chat.archived) continue; // skip archived chats
         const participantIds = chat.participants?.map((p) => p.userId) ?? [];
-        console.log(await db.select().from(messages).where(() => and(
-            eq(messages.chatId, row.chatId),
-            gt(messages.id, chat.readReceipts[0]?.messageId || "0"),
-            ne(messages.deleted, true)
-        )))
         if (!chatMap.has(chat.id)) {
             chatMap.set(chat.id, {
                 id: chat.id,
@@ -82,11 +77,11 @@ export const GET: RequestHandler = async ({ locals }) => {
                 lastMessage: chat.lastMessage ?? undefined,
                 readReceipts: {
                     messageId: chat.readReceipts[0]?.messageId || null,
-                    count: (await db.select({ value: count() }).from(messages).where(() => and(
+                    count: await db.select({ value: count() }).from(messages).where(() => and(
                         eq(messages.chatId, chat.id),
                         gt(messages.id, chat.readReceipts[0]?.messageId || "0"),
                         ne(messages.deleted, true)
-                    )).then(res => res[0].value) & 63) || 0,
+                    )).then(res => res[0].value) || 0,
                 }
             });
         }
