@@ -70,10 +70,15 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
     const action = url.searchParams.get("action");
 
     if (action === "typing" && chatId) {
-        // Broadcast typing indicator to chat participants only
+        // Verify user is a participant of this chat before broadcasting
         const participants = await db.select({ userId: chatParticipants.userId })
             .from(chatParticipants)
             .where(eq(chatParticipants.chatId, chatId));
+
+        const participantIds = participants.map(p => p.userId);
+        if (!participantIds.includes(locals.user.id)) {
+            return new Response(JSON.stringify({ error: "Not a participant of this chat" }), { status: 403 });
+        }
 
         for (const { userId } of participants) {
             if (userId === locals.user.id) continue;

@@ -702,6 +702,7 @@
                         bind:value={chatSearchQuery}
                         type="text"
                         placeholder="Search chats..."
+                        aria-label="Search chats"
                         class="w-full bg-gray-700 text-white text-sm px-3 py-2 rounded placeholder-gray-400 border-0 focus:outline-none focus:ring-1 focus:ring-green-500"
                     />
                 </div>
@@ -901,7 +902,7 @@
                     <div class="flex flex-col gap-0 inset-0 h-full">
                         <div class="w-full bg-green-700 font-medium text-xl flex justify-between items-center p-2 shadow-2xl">
                             <div class="flex items-center gap-1">
-                                <button class="md:hidden p-1" onclick={() => { showMobileSidebar = true; currentlySelectedChatId = null; }}>
+                                <button class="md:hidden p-1" onclick={() => { showMobileSidebar = true; currentlySelectedChatId = null; }} aria-label="Back to chat list">
                                     <span class="material-symbols-outlined">arrow_back</span>
                                 </button>
                                 <div class="px-2 flex flex-col">
@@ -962,6 +963,7 @@
                                     bind:value={messageSearchQuery}
                                     type="text"
                                     placeholder="Search messages..."
+                                    aria-label="Search messages"
                                     class="flex-1 bg-transparent text-white text-sm placeholder-gray-400 border-0 focus:outline-none focus:ring-0"
                                     oninput={() => {
                                         if (messageSearchQuery.trim().length > 0 && messages[chat.id]) {
@@ -1084,6 +1086,7 @@
                         {#if !atBottom}
                             <button
                                 class="absolute bottom-4 right-4 z-20 bg-green-600 hover:bg-green-500 text-white rounded-full w-10 h-10 shadow-lg flex items-center justify-center transition-colors"
+                                aria-label="Scroll to bottom"
                                 onclick={async () => {
                                     if (scrollContainer) {
                                         scrollContainer.scrollTop = scrollContainer.scrollHeight;
@@ -1116,7 +1119,7 @@
                                     </IconButton>
                                 </div>
                                 <div class="relative flex-1 group">
-                                    <textarea bind:value={newMessage} placeholder="Type a message..." rows="1" class="w-full bg-gray-700 text-white px-2 pt-2 pb-1 placeholder-gray-300 border-0 focus:outline-none focus:ring-0 focus:border-transparent resize-none max-h-32 overflow-y-auto" style="field-sizing: content;" onkeydown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }} oninput={() => sendTypingIndicator()}></textarea>
+                                    <textarea bind:value={newMessage} placeholder="Type a message..." aria-label="Type a message" rows="1" class="w-full bg-gray-700 text-white px-2 pt-2 pb-1 placeholder-gray-300 border-0 focus:outline-none focus:ring-0 focus:border-transparent resize-none max-h-32 overflow-y-auto" style="field-sizing: content;" onkeydown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }} oninput={() => sendTypingIndicator()}></textarea>
                                     <div class="absolute left-2 right-2 bottom-0 h-px bg-gray-600"></div>
                                     <div class="absolute left-2 right-2 bottom-0 h-0.5 bg-green-400 scale-x-0 group-focus-within:scale-x-100 transition-transform duration-200 origin-left"></div>
                                 </div>
