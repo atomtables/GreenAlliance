@@ -22,6 +22,15 @@
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
 
+    /** Convert URLs in text to clickable links (escapes HTML first for safety) */
+    const linkifyContent = (text: string): string => {
+        const escaped = escapeHtml(text);
+        return escaped.replace(
+            /(https?:\/\/[^\s<]+)/g,
+            '<a href="$1" target="_blank" rel="noopener noreferrer" class="underline text-blue-200 hover:text-blue-100 break-all">$1</a>'
+        );
+    };
+
     // This is our simple SSE connection to get live updates about new messages
     let conn: EventSource | null = $state(null);
     // The chats variable should never change significantly
@@ -165,6 +174,13 @@
             } else if (chat?.readReceipts) {
                 chat.readReceipts.count += 1;
             }
+            // Browser notification when tab is not focused
+            if (!document.hasFocus() && Notification.permission === "granted") {
+                new Notification("New Message", {
+                    body: msg.content.slice(0, 100),
+                    tag: `msg-${msg.id}`,
+                });
+            }
         });
         source.addEventListener("session", logEvent("session"));
         source.addEventListener("presence", (ev) => {
@@ -236,14 +252,13 @@
     const updateLastReadForChat = (chatId: string, messageId: string) => {
         let chat = chats.find((v) => v.id == chatId);
         let message = messages[chatId]?.find((m) => m.id === messageId);
-        if (!message) return;
+        if (!message || !chat?.readReceipts) return;
         fetch(`/api/messages/${chatId}?messageId=${messageId}`, {
             method: "HEAD",
         }).then((res) => {
-            console.log("Marked messages as read on focus:", res.status);
-            if (res.ok) {
-                chat!.readReceipts.count = res.headers.get("X-Unread-Messages") ? parseInt(res.headers.get("X-Unread-Messages")) : 0;
-                chat!.readReceipts.messageId = res.headers.get("X-Last-Message-Id") || messageId;
+            if (res.ok && chat?.readReceipts) {
+                chat.readReceipts.count = res.headers.get("X-Unread-Messages") ? parseInt(res.headers.get("X-Unread-Messages")) : 0;
+                chat.readReceipts.messageId = res.headers.get("X-Last-Message-Id") || messageId;
             }
         });
     };
@@ -279,7 +294,7 @@
 
         const currentChatId = currentlySelectedChatId;
         const chat = currentlySelectedChat;
-        if (currentChatId && chat && chat.readReceipts.count === 0 && stickyUnreadBoundary[currentChatId]) {
+        if (currentChatId && chat && chat.readReceipts?.count === 0 && stickyUnreadBoundary[currentChatId]) {
             stickyUnreadBoundary[currentChatId] = null;
         }
     };
@@ -297,8 +312,11 @@
     // to come in and connect via SSE
     onMount(async () => {
         chats = await data.chats;
-        // currentlySelectedChatId = chats[0]?.id || null;
         connectToChat();
+        // Request notification permission
+        if ("Notification" in window && Notification.permission === "default") {
+            Notification.requestPermission();
+        }
     });
 
     // Whenever the currently selected chat changes, we load its messages if we haven't already
@@ -342,7 +360,7 @@
     $effect(() => {
         if (!currentlySelectedChat) return;
         const chat = currentlySelectedChat;
-        if (chat.readReceipts.count > 0) {
+        if (chat.readReceipts?.count > 0) {
             stickyUnreadBoundary[chat.id] = chat.readReceipts.messageId;
         }
     });
@@ -853,7 +871,7 @@
                                             </div>
                                         {/if}
                                     </div>
-                                    {message.content}
+                                    {@html linkifyContent(message.content)}
                                     {#if tail}
                                         {#if isMine}
                                             <div class="absolute -right-2 bottom-0 w-0 h-0 border-solid border-t-[15px] border-t-transparent border-l-[15px] border-l-green-600"></div>
@@ -1029,7 +1047,7 @@
                             {:else if messages[chat.id].length === 0}
                                 <div class="w-full flex justify-center items-center p-5 gap-2 font-bold text-lg text-gray-300">No messages yet. Say hello!</div>
                             {:else}
-                                {@const liveUnreadId = chat.readReceipts.count > 0 ? chat.readReceipts.messageId : null}
+                                {@const liveUnreadId = chat.readReceipts?.count > 0 ? chat.readReceipts.messageId : null}
                                 {@const stickyUnreadId = stickyUnreadBoundary[chat.id] ?? null}
                                 {@const unreadBoundaryId = liveUnreadId ?? stickyUnreadId}
                                 <div class="flex flex-col gap-1 w-full">
