@@ -77,8 +77,9 @@ export const reencodeToPng = async (buffer: Buffer) => {
 };
 
 export const resolveSafePath = (root: string, relativePath: string) => {
+    const resolvedRoot = path.resolve(root);
     const targetPath = path.resolve(root, relativePath);
-    if (!targetPath.startsWith(path.resolve(root))) {
+    if (targetPath !== resolvedRoot && !targetPath.startsWith(`${resolvedRoot}${path.sep}`)) {
         throw new Error("Invalid file path");
     }
     return targetPath;
