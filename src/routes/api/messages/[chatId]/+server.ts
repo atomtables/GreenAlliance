@@ -1,10 +1,10 @@
 import { RequiresPermissions } from "$lib/functions/requirePermissions";
 import { db } from "$lib/server/db";
-import { messages, chatParticipants } from "$lib/server/db/schema";
+import { attachments, messages, chatParticipants } from "$lib/server/db/schema";
 import { normaliseChatFromDatabase, normaliseMessageFromDatabase, type Message } from "$lib/types/messages";
 import { Permission } from "$lib/types/types";
 import type { RequestHandler } from "@sveltejs/kit";
-import { and, count, desc, eq, gt, lt, ne, sql } from "drizzle-orm";
+import { and, count, desc, eq, gt, lt, ne, sql, inArray } from "drizzle-orm";
 import { produce } from "sveltekit-sse";
 import { _clients as clients } from "../stream/+server";
 import { messagesReactions, messagesReadReceipts, messageReports } from "$lib/server/db/schema/messages";
@@ -165,6 +165,11 @@ export const POST: RequestHandler = async ({ request, locals, params }) => {
     }
     let chatId = params.chatId;
     let content = formData.get("content") as string;
+    const attachmentUrls = Array.from(new Set(
+        formData.getAll("attachments")
+            .map((value) => value?.toString().trim())
+            .filter((value) => value)
+    ));
     if (!chatId || !content) {
         return new Response(JSON.stringify({ error: "Please provide all required fields" }), { status: 400 });
     }
@@ -223,6 +228,7 @@ export const POST: RequestHandler = async ({ request, locals, params }) => {
                 chatId,
                 author: locals.user.id,
                 content,
+                attachments: attachmentUrls,
             })
             .returning()
             .then((res) => {
@@ -231,6 +237,16 @@ export const POST: RequestHandler = async ({ request, locals, params }) => {
             });
 
         const normalisedItem = normaliseMessageFromDatabase(item as any);
+
+        if (attachmentUrls.length > 0) {
+            await db
+                .update(attachments)
+                .set({ messageId: normalisedItem.id } as typeof attachments.$inferSelect)
+                .where(and(
+                    eq(attachments.author, locals.user.id),
+                    inArray(attachments.url, attachmentUrls)
+                ));
+        }
 
         // notify only chat participants
         const participantIds = await getChatParticipantIds(chatId!);

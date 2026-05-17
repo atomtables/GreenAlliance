@@ -28,6 +28,15 @@
     let atBottom = $state(true);
     // This is simple state to hold the new message being typed
     let newMessage: string = $state("");
+    type PendingAttachment = {
+        id: string;
+        name: string;
+        url: string | null;
+        uploading: boolean;
+        error?: string | null;
+    };
+    let attachmentInput = $state<HTMLInputElement | null>(null);
+    let pendingAttachments = $state<PendingAttachment[]>([]);
     // This is the currently selected chat id from the sidebar
     let currentlySelectedChatId = $state<string>(null);
     // Using a derived store, we can always have the currently selected chat object
@@ -357,12 +366,66 @@
         // document.removeEventListener("click", closeMenusOnClick);
     });
 
+    const updateAttachment = (id: string, updates: Partial<PendingAttachment>) => {
+        pendingAttachments = pendingAttachments.map((attachment) =>
+            attachment.id === id ? { ...attachment, ...updates } : attachment
+        );
+    };
+
+    const removeAttachment = (id: string) => {
+        pendingAttachments = pendingAttachments.filter((attachment) => attachment.id !== id);
+    };
+
+    const uploadAttachment = async (file: File, id: string) => {
+        try {
+            const formData = new FormData();
+            formData.append("file", file);
+            const res = await fetch("/upload/attachments", {
+                method: "POST",
+                body: formData,
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                throw new Error(data.error || "Failed to upload attachment");
+            }
+            updateAttachment(id, { uploading: false, url: data.url, error: null });
+        } catch (e: any) {
+            updateAttachment(id, { uploading: false, error: e?.message || "Attachment upload failed" });
+            showToast(e?.message || "Attachment upload failed", { icon: "error" });
+        }
+    };
+
+    const handleAttachmentSelection = async (event: Event) => {
+        const target = event.currentTarget as HTMLInputElement;
+        const files = Array.from(target.files || []);
+        if (files.length === 0) return;
+        target.value = "";
+        for (const file of files) {
+            const id = crypto.randomUUID();
+            pendingAttachments = [
+                ...pendingAttachments,
+                { id, name: file.name, url: null, uploading: true, error: null },
+            ];
+            void uploadAttachment(file, id);
+        }
+    };
+
     // The next 3 functions are self-explanatory
     const sendMessage = async () => {
         if (!newMessage.trim() || !currentlySelectedChatId) return;
+        if (pendingAttachments.some((attachment) => attachment.uploading)) {
+            showToast("Attachments are still uploading.", { icon: "upload" });
+            return;
+        }
 
         let formData = new FormData();
         formData.append("content", newMessage.trim());
+        const attachmentUrls = pendingAttachments
+            .filter((attachment) => attachment.url && !attachment.error)
+            .map((attachment) => attachment.url as string);
+        for (const url of attachmentUrls) {
+            formData.append("attachments", url);
+        }
 
         const res = await fetch(`/api/messages/${currentlySelectedChatId}`, {
             method: "POST",
@@ -374,6 +437,7 @@
             messages[currentlySelectedChatId] = [...(messages[currentlySelectedChatId] || []), sentMessage];
             updateChatLists(currentlySelectedChatId, sentMessage);
             newMessage = "";
+            pendingAttachments = [];
             if (atBottom) {
                 await tick();
                 const container = document.querySelector(".flex-1.overflow-auto.p-5");
@@ -991,8 +1055,8 @@
                             {/if}
                         </div>
                         <div>
-                            <div class="w-full bg-gray-700 p-2 flex flex-row gap- items-center">
-                                <div class="relative">
+                            <div class="w-full bg-gray-700 p-2 flex flex-row gap-2 items-center">
+                                <div class="relative flex items-center gap-1">
                                     {#if showEmojiPicker}
                                         <div class="absolute bottom-full left-0 mb-2 z-50" transition:scale={{ duration: 150, start: 0.9 }}>
                                             <EmojiPicker onselect={(emoji) => { newMessage += emoji; showEmojiPicker = false; }} />
@@ -1001,6 +1065,16 @@
                                     <IconButton onclick={() => showEmojiPicker = !showEmojiPicker} transparent>
                                         <span class="material-symbols-outlined icons-fill">emoji_emotions</span>
                                     </IconButton>
+                                    <IconButton onclick={() => attachmentInput?.click()} transparent>
+                                        <span class="material-symbols-outlined icons-fill">attach_file</span>
+                                    </IconButton>
+                                    <input
+                                        bind:this={attachmentInput}
+                                        type="file"
+                                        class="hidden"
+                                        multiple
+                                        onchange={handleAttachmentSelection}
+                                    />
                                 </div>
                                 <div class="relative flex-1 group -mt-1.5">
                                     <input bind:value={newMessage} type="text" placeholder="Type a message..." class="w-full bg-gray-700 text-white px-2 pt-2 pb-1 placeholder-gray-300 border-0 focus:outline-none focus:ring-0 focus:border-transparent" onkeydown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }} />
@@ -1011,6 +1085,21 @@
                                     <span class="material-symbols-outlined icons-fill">send</span>
                                 </IconButton>
                             </div>
+                            {#if pendingAttachments.length > 0}
+                                <div class="w-full bg-gray-700 px-2 pb-2 flex flex-wrap gap-2">
+                                    {#each pendingAttachments as attachment (attachment.id)}
+                                        <div class="flex items-center gap-2 bg-gray-600 text-xs text-white px-2 py-1 rounded">
+                                            <span class="max-w-[160px] truncate" title={attachment.name}>{attachment.name}</span>
+                                            {#if attachment.uploading}
+                                                <span class="text-gray-300">Uploading...</span>
+                                            {:else if attachment.error}
+                                                <span class="text-red-300">Failed</span>
+                                            {/if}
+                                            <button class="text-gray-200 hover:text-red-300" onclick={() => removeAttachment(attachment.id)}>✕</button>
+                                        </div>
+                                    {/each}
+                                </div>
+                            {/if}
                         </div>
                     </div>
                 {/if}

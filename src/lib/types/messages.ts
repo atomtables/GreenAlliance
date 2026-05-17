@@ -28,7 +28,7 @@ export interface Message {
     editHistory?: {content: string, editedAt: string}[];
     // was message deleted?
     deleted?: boolean;
-    // attachments (array of attachment IDs)
+    // attachments (array of attachment URL tokens)
     attachments?: string[];
     // reactions (map of userId to emoji)
     reactions: {[userId: string]: string};
