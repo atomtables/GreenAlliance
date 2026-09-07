@@ -1,11 +1,10 @@
 <script lang="ts">
 	import { invalidate } from "$app/navigation";
 	import Dialog from "$lib/components/Dialog.svelte";
+	import Button from "$lib/components/Button.svelte";
 	import IconButton from "$lib/components/IconButton.svelte";
 	import Input from "$lib/components/Input.svelte";
-	import { onMount } from "svelte";
 	import { alert } from "$lib/components/Dialog.svelte";
-	import Button from "$lib/components/Button.svelte";
 	import Table from "$lib/components/Table.svelte";
 	import { Role } from "$lib/types/types";
 
@@ -13,7 +12,7 @@
 	let today = new Date();
 
 	const toLocalISOString = (date: Date) => {
-		const offset = date.getTimezoneOffset() * 60000; // offset in milliseconds
+		const offset = date.getTimezoneOffset() * 60000;
 		const localISOTime = new Date(date.getTime() - offset)
 			.toISOString()
 			.slice(0, 16);
@@ -97,7 +96,6 @@
 			formError = "There was an error loading data. " + json.error;
 			return;
 		}
-
 		let json = await res.json();
 		if (json.success) {
 			invalidate("meetings:events");
@@ -292,6 +290,32 @@
 			];
 		} else {
 			return [{ name: "Close", action: () => null, close: true }];
+		}
+	};
+	const openMeeting = async (meeting: typeof meetings[0]) => {
+		selectedMeetingOpen = true;
+		title = meeting.title;
+		description = meeting.description;
+		date = toLocalISOString(meeting.dateOf);
+		durationMinutes = meeting.durationMinutes;
+		subteams = meeting.subteams;
+		selectedMeeting = meeting.id;
+		selectedMembers = [];
+		selectedMeetingStatuses = {};
+		if (meeting.dateOf < new Date()) {
+			selectedMeetingPassed = true;
+		} else {
+			selectedMeetingPassed = false;
+		}
+		for (let i = 0; i < members.length; i++) {
+			if (meeting.members.includes(members[i].id)) {
+				selectedMembers.push(members[i]);
+			}
+		}
+		if (editAccess) {
+			await getAttendance();
+		} else {
+			await getStatus();
 		}
 	};
 </script>
@@ -544,120 +568,89 @@
 	</Dialog>
 {/if}
 
-<div class="w-full h-full p-10">
-	<div class="bg-slate-600 w-full h-full flex flex-col overflow-y-scroll">
+<div class="w-full h-full p-2 md:p-4 overflow-hidden">
+	<div class="bg-slate-600 w-full h-full flex flex-col overflow-hidden rounded-lg">
+		<!-- Header -->
 		<div
-			class="font-bold text-2xl px-5 pt-5 flex flex-row flex-nowrap gap-2 justify-between items-center"
+			class="font-bold text-lg md:text-2xl px-3 md:px-5 pt-3 md:pt-5 flex flex-row flex-nowrap gap-2 justify-between items-center shrink-0"
 		>
 			<span>
 				{today.toMonthString()}
 				{today.getFullYear()}
 			</span>
-			<IconButton
-				onclick={() => {
-					createNewEventOpen = true;
-					title = "";
-					description = "";
-					date = toLocalISOString(today);
-					subteams = [];
-					selectedMembers = new Array(members.length).fill("");
-					formError = "";
-				}}
-				><span class="material-symbols-outlined icons-fill">add</span
-				></IconButton
-			>
-		</div>
-		<div class="flex flex-wrap px-5 pt-5">
-			{#each ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as date}
-				<div
-					class="basis-1/7 text-center uppercase text-subheader pb-2"
+			<div class="flex flex-row gap-2 items-center">
+				<a
+					href="http://localhost:5173/api/calendar.ics"
+					class="flex flex-row gap-1 items-center"
+					><span class="material-symbols-outlined icons-fill"
+						>calendar_month</span
+					><span class="hidden sm:inline">Download iCal</span></a
 				>
-					{date}
-				</div>
-			{/each}
+				<IconButton
+					onclick={() => {
+						createNewEventOpen = true;
+						title = "";
+						description = "";
+						date = toLocalISOString(today);
+						subteams = [];
+						selectedMembers = new Array(members.length).fill("");
+						formError = "";
+					}}
+					><span class="material-symbols-outlined icons-fill">add</span
+					></IconButton
+				>
+			</div>
 		</div>
-		<div
-			class="grid grid-cols-7 m-5 mt-0 border-2 border-neutral-500 bg-neutral-600"
-		>
+
+		<!-- ===== MOBILE: Agenda list view ===== -->
+		<div class="flex-1 min-h-0 overflow-y-auto md:hidden px-3 pb-3 pt-2">
 			{#each [...Array(today.daysInMonth()).keys()] as num, i}
-				<div
-					class="basis-1/7 w-full border-2 border-neutral-500 bg-neutral-600 aspect-square overflow-none"
-				>
-					<div class="font-bold text-2xl p-2">
-						{i + 1}
-					</div>
-					{#each meetings as meeting}
-						{#if meeting.dateOf.getMonth() === today.getMonth() && meeting.dateOf.getDate() === i + 1}
+				{@const dayMeetings = meetings.filter(
+					(m) => m.dateOf.getMonth() === today.getMonth() && m.dateOf.getDate() === i + 1
+				)}
+				{#if dayMeetings.length > 0}
+					<div class="mb-3">
+						<div class="text-xs uppercase text-neutral-400 font-semibold tracking-wide pb-1 border-b border-neutral-500 mb-2">
+							{new Date(today.getFullYear(), today.getMonth(), i + 1).toLocaleDateString(undefined, {
+								weekday: "short",
+								month: "short",
+								day: "numeric",
+							})}
+						</div>
+						{#each dayMeetings as meeting}
 							<div
-								class="bg-orange-800 w-full text-sm font-bold p-1 rounded-md cursor-pointer hover:bg-orange-700 transition-colors duration-200 line-clamp-3 break-all max-h-16"
-								onclick={async () => {
-									selectedMeetingOpen = true;
-									title = meeting.title;
-									description = meeting.description;
-									date = toLocalISOString(meeting.dateOf);
-									subteams = meeting.subteams;
-									selectedMeeting = meeting.id;
-									selectedMembers = [];
-									selectedMeetingStatuses = {};
-									if (meeting.dateOf < new Date()) {
-										selectedMeetingPassed = true;
-									} else {
-										selectedMeetingPassed = false;
-									}
-									for (let i = 0; i < members.length; i++) {
-										if (
-											meeting.members.includes(
-												members[i].id,
-											)
-										) {
-											selectedMembers.push(members[i]);
-										}
-									}
-									if (editAccess) {
-										await getAttendance();
-									} else {
-										await getStatus();
-									}
-								}}
+								class="bg-orange-800 rounded-lg p-3 mb-2 cursor-pointer hover:bg-orange-700 active:bg-orange-600 transition-colors duration-200"
+								onclick={() => openMeeting(meeting)}
 							>
-								<div class="line-clamp-1 break-all max-w-full">
-									<span class="font-bold">
-										{meeting.dateOf.toLocaleTimeString(
-											undefined,
-											{
+								<div class="flex flex-row justify-between items-start gap-2">
+									<div class="flex-1 min-w-0">
+										<div class="font-bold text-base truncate">{meeting.title}</div>
+										<div class="text-sm text-neutral-300 mt-0.5">
+											{meeting.dateOf.toLocaleTimeString(undefined, {
 												hour: "2-digit",
 												minute: "2-digit",
-											},
-										)}
-										-
-										{new Date(
-											meeting.dateOf.getTime() +
-												meeting.durationMinutes *
-													60 *
-													1000,
-										).toLocaleTimeString(undefined, {
-											hour: "2-digit",
-											minute: "2-digit",
-										})}
-									</span>
-									<span class="font-light">
-										{meeting.title}
-									</span>
+											})}
+											-
+											{new Date(
+												meeting.dateOf.getTime() + meeting.durationMinutes * 60 * 1000,
+											).toLocaleTimeString(undefined, {
+												hour: "2-digit",
+												minute: "2-digit",
+											})}
+										</div>
+										{#if meeting.subteams.length > 0}
+											<div class="text-xs text-neutral-400 mt-1">{meeting.subteams.join(", ")}</div>
+										{/if}
+									</div>
 									{#if editAccess}
-										<div
-											class="flex flex-row justify-end space-x-2"
-										>
+										<div class="flex flex-row gap-1 shrink-0">
 											<IconButton
 												onclick={(e) => {
 													e.stopPropagation();
 													editEvent(meeting.id);
 												}}
 											>
-												<span
-													class="material-symbols-outlined icons-fill !text-sm"
-												>
-													edit
-												</span>
+												<span class="material-symbols-outlined icons-fill !text-base">edit</span>
 											</IconButton>
 											<IconButton
 												onclick={(e) => {
@@ -665,19 +658,107 @@
 													removeEvent(meeting.id);
 												}}
 											>
-												<span
-													class="material-symbols-outlined icons-fill !text-sm"
-													>delete</span
-												>
+												<span class="material-symbols-outlined icons-fill !text-base">delete</span>
 											</IconButton>
 										</div>
 									{/if}
 								</div>
 							</div>
-						{/if}
-					{/each}
-				</div>
+						{/each}
+					</div>
+				{/if}
 			{/each}
+			{#if meetings.filter((m) => m.dateOf.getMonth() === today.getMonth()).length === 0}
+				<div class="text-center text-neutral-400 py-10">No meetings this month</div>
+			{/if}
+		</div>
+
+		<!-- ===== DESKTOP: Grid calendar view ===== -->
+		<div class="hidden md:flex flex-col flex-1 min-h-0">
+			<div class="flex flex-wrap px-5 pt-5 shrink-0">
+				{#each ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as date}
+					<div
+						class="basis-1/7 text-center uppercase text-subheader pb-2"
+					>
+						{date}
+					</div>
+				{/each}
+			</div>
+			<div
+				class="grid grid-cols-7 auto-rows-[1fr] m-5 mt-0 border-2 border-neutral-500 bg-neutral-600 flex-1 min-h-0"
+			>
+				{#each [...Array(today.daysInMonth()).keys()] as num, i}
+					<div
+						class="basis-1/7 w-full border-2 border-neutral-500 bg-neutral-600 overflow-y-auto"
+					>
+						<div class="font-bold text-sm p-1">
+							{i + 1}
+						</div>
+						{#each meetings as meeting}
+							{#if meeting.dateOf.getMonth() === today.getMonth() && meeting.dateOf.getDate() === i + 1}
+								<div
+									class="bg-orange-800 w-full text-sm font-bold p-1 rounded-md cursor-pointer hover:bg-orange-700 transition-colors duration-200 line-clamp-3 break-all max-h-16"
+									onclick={() => openMeeting(meeting)}
+								>
+									<div class="line-clamp-1 break-all max-w-full">
+										<span class="font-bold">
+											{meeting.dateOf.toLocaleTimeString(
+												undefined,
+												{
+													hour: "2-digit",
+													minute: "2-digit",
+												},
+											)}
+											-
+											{new Date(
+												meeting.dateOf.getTime() +
+													meeting.durationMinutes *
+														60 *
+														1000,
+											).toLocaleTimeString(undefined, {
+												hour: "2-digit",
+												minute: "2-digit",
+											})}
+										</span>
+										<span class="font-light">
+											{meeting.title}
+										</span>
+										{#if editAccess}
+											<div
+												class="flex flex-row justify-end space-x-2"
+											>
+												<IconButton
+													onclick={(e) => {
+														e.stopPropagation();
+														editEvent(meeting.id);
+													}}
+												>
+													<span
+														class="material-symbols-outlined icons-fill !text-sm"
+													>
+														edit
+													</span>
+												</IconButton>
+												<IconButton
+													onclick={(e) => {
+														e.stopPropagation();
+														removeEvent(meeting.id);
+													}}
+												>
+													<span
+														class="material-symbols-outlined icons-fill !text-sm"
+														>delete</span
+													>
+												</IconButton>
+											</div>
+										{/if}
+									</div>
+								</div>
+							{/if}
+						{/each}
+					</div>
+				{/each}
+			</div>
 		</div>
 	</div>
 </div>

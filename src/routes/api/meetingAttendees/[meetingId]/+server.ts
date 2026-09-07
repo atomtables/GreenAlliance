@@ -3,7 +3,7 @@ import * as schema from "$lib/server/db/schema.js"
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 
 export const GET: RequestHandler = async ({ params, locals }: any) => {
 	if (!locals?.user?.permissions?.includes?.(Permission.calendar_moderate)) return error(401, "Unauthorized");
@@ -13,13 +13,13 @@ export const GET: RequestHandler = async ({ params, locals }: any) => {
 
 	try {
 		const attendees = await db
-			.select({ userId: schema.meetingAttendees.userId, status: schema.meetingAttendees.status })
+			.select({ userId: schema.meetingAttendees.userId, status: schema.meetingAttendees.status, present: schema.meetingAttendees.present })
 			.from(schema.meetingAttendees)
 			.where(eq(schema.meetingAttendees.meetingId, meetingId));
 
 		if (!attendees) return error(404, "No attendees found or meeting does not exist");
 
-		const userIds = attendees.map(a => a.userId);
+		const userIds = attendees.filter(a => a.present).map(a => a.userId);
 		const statusMap = {};
 		attendees.forEach(a => {
 			statusMap[a.userId] = a.status;
@@ -35,7 +35,7 @@ export const GET: RequestHandler = async ({ params, locals }: any) => {
 }
 
 export const POST: RequestHandler = async ({ request, params, locals }: any) => {
-	if (!locals?.user) return error(401, "Unauthorized");
+	if (!locals?.user?.permissions?.includes?.(Permission.calendar_moderate)) return error(403, "Access denied.");
 
 	const { meetingId } = params;
 	if (!meetingId) return error(400, "Missing required parameter: meetingId");
@@ -45,16 +45,19 @@ export const POST: RequestHandler = async ({ request, params, locals }: any) => 
 
 	try {
 		await db.transaction(async (tx) => {
-			await tx.delete(schema.meetingAttendees).where(eq(schema.meetingAttendees.meetingId, meetingId));
-			if (userIds.length > 0) {
-				await tx.insert(schema.meetingAttendees).values(
-					userIds.map((userId: string) => ({
-						meetingId,
-						userId,
-						status: 'maybe',
-						present: false
-					}))
-				);
+			// Mark everyone for this meeting as not present
+			await tx.update(schema.meetingAttendees)
+				.set({ present: false })
+				.where(eq(schema.meetingAttendees.meetingId, meetingId));
+
+			// Mark the submitted userIds as present
+			for (const userId of userIds) {
+				await tx.update(schema.meetingAttendees)
+					.set({ present: true })
+					.where(and(
+						eq(schema.meetingAttendees.meetingId, meetingId),
+						eq(schema.meetingAttendees.userId, userId)
+					));
 			}
 		});
 

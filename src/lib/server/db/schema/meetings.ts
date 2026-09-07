@@ -1,7 +1,5 @@
-import { sql } from 'drizzle-orm';
 import { pgTable, serial, text, timestamp, boolean, integer } from 'drizzle-orm/pg-core';
 import * as crypto from 'node:crypto';
-import { json } from './common';
 import { users } from './users';
 
 export const meetings = pgTable('meetings', {

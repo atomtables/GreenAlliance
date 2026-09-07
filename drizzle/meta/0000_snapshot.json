@@ -1,5 +1,5 @@
 {
-  "id": "1ba1d15a-ad51-4ad1-b0ca-dbce24c42674",
+  "id": "b60511ce-60ac-40a4-a5ba-f09d24fd46d1",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -186,6 +186,13 @@
           "type": "timestamp",
           "primaryKey": false,
           "notNull": true
+        },
+        "duration_minutes": {
+          "name": "duration_minutes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 60
         },
         "subteams": {
           "name": "subteams",

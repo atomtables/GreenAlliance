@@ -68,7 +68,7 @@ const subteamNames = ["All", "Electrical", "Mechanical", "Business", "Software"]
 for (const subteamName of subteamNames) {
 	await database.insert(schema.subteams).values({
 		name: subteamName
-	});
+	}).onConflictDoNothing();
 }
 
 // Insert Admin
@@ -85,7 +85,7 @@ await database.insert(schema.users).values({
 	firstName: "john",
 	lastName: "doe",
 	email: "johndoe@gmail.com",
-} as InferInsertModel<typeof schema.users>);
+} as InferInsertModel<typeof schema.users>).onConflictDoNothing();
 
 // Insert Regular User
 await database.insert(schema.users).values({
@@ -101,7 +101,7 @@ await database.insert(schema.users).values({
 	firstName: "jane",
 	lastName: "doe",
 	email: "janedoe@gmail.com",
-} as InferInsertModel<typeof schema.users>);
+} as InferInsertModel<typeof schema.users>).onConflictDoNothing();
 
 function getRandomInt(min: number, max: number): number {
 	return Math.floor(Math.random() * (max - min)) + min;
@@ -140,7 +140,7 @@ for (let i = 0; i < 25; i++) {
 		firstName,
 		lastName,
 		email: `${firstName}.${lastName}@example.user`,
-	});
+	}).onConflictDoNothing();
 }
 
 await pool.end();
