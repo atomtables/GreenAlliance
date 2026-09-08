@@ -3,40 +3,40 @@
     import { cubicInOut } from "svelte/easing";
     import { fade } from "svelte/transition";
 
-    type ButtonProps = {
-        children: () => any,
-        onclick?: () => boolean | void | Promise<boolean>,
-        class?: string,
-        type?: "button" | "submit" | "reset",
-        disabled?: boolean,
-        transparent?: boolean,
-        disableLoading?: boolean,
+	type ButtonProps = {
+		children: () => any;
+		onclick?: (e: MouseEvent) => boolean | void | Promise<boolean | void>;
+		class?: string;
+		type?: "button" | "submit" | "reset";
+		disabled?: boolean;
+		transparent?: boolean;
+		disableLoading?: boolean;
         title?: string,
-    };
+	};
 
-    let {
-        children, 
-        onclick, 
-        class: className = "",
-        type = "button", 
-        disabled = $bindable(), 
-        transparent = false, 
-        disableLoading = false,
+	let {
+		children,
+		onclick,
+		class: className = "",
+		type = "button",
+		disabled = $bindable(),
+		transparent = false,
+		disableLoading = false,
         title = undefined,
-    }:ButtonProps = $props();
+	}: ButtonProps = $props();
 
     let resolving = $state(false);
     let showTooltip = $state(false);
 
     const hasTooltip = $derived(Boolean(title?.trim()));
 
-    const handleClick = async () => {
-        if (disabled || resolving) return;
+	const handleClick = async (e: any) => {
+		if (disabled || resolving) return;
 
         resolving = true;
         try {
             if (typeof onclick === 'function')
-                await Promise.resolve(onclick?.());
+                await onclick?.(e);
         } finally {
             resolving = false;
         }

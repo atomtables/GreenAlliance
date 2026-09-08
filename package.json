@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "vite dev",
+    "dev": "vite dev --host",
     "build": "vite build",
     "preview": "vite preview",
     "prepare": "svelte-kit sync || echo ''",
@@ -42,6 +42,7 @@
     "@sveltejs/adapter-node": "^5.3.2",
     "dotenv": "^16.5.0",
     "drizzle-orm": "^0.40.0",
+    "ical-generator": "^11.1.1",
     "jspdf": "^3.0.3",
     "jspdf-autotable": "^5.0.2",
     "pg": "^8.12.0",

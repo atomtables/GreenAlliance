@@ -1,5 +1,5 @@
 {
-  "id": "e6d2b381-6649-46f5-858a-20fa8b338b25",
+  "id": "b60511ce-60ac-40a4-a5ba-f09d24fd46d1",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -481,6 +481,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "present": {
+          "name": "present",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         }
       },
       "indexes": {},
@@ -559,12 +566,26 @@
           "primaryKey": false,
           "notNull": true
         },
-        "subteams": {
-          "name": "subteams",
-          "type": "jsonb",
+        "duration_minutes": {
+          "name": "duration_minutes",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "default": "'[]'::jsonb"
+          "default": 60
+        },
+        "subteams": {
+          "name": "subteams",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
+        },
+        "members": {
+          "name": "members",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
         }
       },
       "indexes": {},
