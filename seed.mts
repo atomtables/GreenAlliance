@@ -92,6 +92,7 @@ await database.insert(schema.users).values({
     firstName: "john",
     lastName: "doe",
     email: "johndoe@gmail.com",
+	tosAgreedAt: Date.now()
 } as InferInsertModel<typeof schema.users>);
 
 // Insert Regular User
@@ -109,6 +110,7 @@ await database.insert(schema.users).values({
 	firstName: "jane",
 	lastName: "doe",
 	email: "janedoe@gmail.com",
+	tosAgreedAt: Date.now()
 } as InferInsertModel<typeof schema.users>).onConflictDoNothing();
 
 function getRandomInt(min: number, max: number): number {
