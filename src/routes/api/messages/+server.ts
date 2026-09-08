@@ -1,16 +1,16 @@
 // This handles the creation and getting of
 // new chats between people
 
-import { messages, chats, chatParticipants, users, messagesReadReceipts } from "$lib/server/db/schema";
-import type { RequestHandler } from "@sveltejs/kit";
-import { db } from "$lib/server/db/index";
-import { normaliseChatFromDatabase, normaliseMessageFromDatabase, type Chat, type Message } from "$lib/types/messages";
-import { RequiresPermissions } from "$lib/functions/requirePermissions";
-import { Permission, Role, type User } from "$lib/types/types";
-import { and, count, desc, eq, inArray, gt, ne, notInArray } from "drizzle-orm";
-import { cleanUserFromDatabase } from "$lib/server/auth";
-import { _clients as clients } from "./stream/+server";
-import { _invalidateParticipantCache as invalidateParticipantCache } from "./[chatId]/+server";
+import {chatParticipants, chats, messages, users} from "$lib/server/db/schema";
+import type {RequestHandler} from "@sveltejs/kit";
+import {db} from "$lib/server/db/index";
+import {type Chat, normaliseChatFromDatabase, normaliseMessageFromDatabase} from "$lib/types/messages";
+import {RequiresPermissions} from "$lib/functions/requirePermissions";
+import {Permission, Role, type User} from "$lib/types/types";
+import {and, count, desc, eq, gt, inArray, ne, notInArray} from "drizzle-orm";
+import {cleanUserFromDatabase} from "$lib/server/auth";
+import {_clients as clients} from "./stream/+server";
+import {_invalidateParticipantCache as invalidateParticipantCache} from "./[chatId]/+server";
 
 // Retrieve all chats for a given user.
 export const GET: RequestHandler = async ({ locals }) => {
@@ -118,6 +118,7 @@ export const GET: RequestHandler = async ({ locals }) => {
     // can still see who they are allowed to start chats with.
     // Filter at the database level by excluding roles the user can't message.
     const excludedRoles = getExcludedRoles(locals.user!);
+    console.log(excludedRoles);
     const allowedUsersConditions = [ne(users.id, userId)];
     if (excludedRoles.length > 0) {
         allowedUsersConditions.push(notInArray(users.role, excludedRoles));
@@ -146,10 +147,10 @@ export const GET: RequestHandler = async ({ locals }) => {
 // messageable by anyone with the base "message" permission.
 const getExcludedRoles = (user: User): Role[] => {
     const excluded: Role[] = [];
-    if (!user.permissions.includes(Permission.message_anyone)) {
+    if (!user.permissions.includes(Permission.message_create_with_anyone)) {
         excluded.push(Role.member);
     }
-    if (!user.permissions.includes(Permission.message_leads)) {
+    if (!user.permissions.includes(Permission.message_create_with_leads)) {
         excluded.push(Role.lead);
     }
     return excluded;
@@ -164,6 +165,10 @@ const checkIfUserCanMessage = (user: User, target: User): boolean => {
 // Create a chat with specified participant IDs
 export const PUT: RequestHandler = async ({ request, locals }) => {
     if (!RequiresPermissions(locals, [Permission.message])) return new Response(JSON.stringify({ error: "Insufficient permissions" }), { status: 401 });
+    if (!RequiresPermissions(locals, [Permission.message_create_with_adults]) ||
+        !RequiresPermissions(locals, [Permission.message_create_with_leads]) ||
+        !RequiresPermissions(locals, [Permission.message_create_with_anyone]))
+        return new Response(JSON.stringify({error: "Insufficient permissions"}), {status: 401});
 
     let formData: FormData;
     try {

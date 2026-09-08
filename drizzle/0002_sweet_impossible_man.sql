@@ -1,1 +1,0 @@
-ALTER TABLE "message_reports" ADD COLUMN "admin_notes" text DEFAULT '' NOT NULL;

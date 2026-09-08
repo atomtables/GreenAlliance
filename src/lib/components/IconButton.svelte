@@ -1,6 +1,5 @@
 <script lang="ts">
     import Button from "./Button.svelte";
-    import Dialog from "./Dialog.svelte";
 
     let {
         children,
@@ -13,7 +12,7 @@
         title = undefined,
     }: {
         children: () => any,
-        onclick?: () => boolean | void | Promise<boolean>,
+        onclick?: (() => boolean | Promise<boolean>) | (() => any),
         class?: string,
         type?: string,
         disabled?: boolean,

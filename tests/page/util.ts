@@ -1,10 +1,10 @@
-import { expect, test } from "@playwright/test";
-import { drizzle } from "drizzle-orm/node-postgres";
-import { Pool } from "pg";
-import { eq } from "drizzle-orm";
-import { users } from "../../src/lib/server/db/schema";
-import { routeRules } from "../../src/sitemap";
-import { Role } from "../../src/lib/types/types";
+import {expect, test} from "@playwright/test";
+import {drizzle} from "drizzle-orm/node-postgres";
+import {Pool} from "pg";
+import {eq} from "drizzle-orm";
+import {users} from "../../src/lib/server/db/schema";
+import {routeRules} from "../../src/sitemap";
+import {Role} from "../../src/lib/types/types";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const db = drizzle(pool);
@@ -33,9 +33,18 @@ async function getUserPermissions(username: string): Promise<number[]> {
     if (!user) return [];
     // Administrators get all permissions (mirrors hooks.server.ts logic)
     if (user.role === Role.administrator) {
-        return Array.from(Array(33).keys());
+        return Array.from(Array(50).keys());
     }
     return (user.permissions ?? []) as number[];
+}
+
+async function setAllUserPermissions(username: string, permissions: number[]): Promise<number[]> {
+    const result = await db.update(users)
+        // @ts-ignore
+        .set({permissions})
+        .where(eq(users.username, username));
+    // Returning the newly set permissions so the caller knows what was applied
+    return permissions;
 }
 
 const signin = async ( page, user = process.env.MOD_USER, pass = process.env.MOD_PASS ) => {
@@ -58,7 +67,11 @@ const lackPerms = async ( page, url ) => {
     const requiredPerms = getRequiredPermissions(url);
     const userPerms = await getUserPermissions(process.env.REG_USER!);
     const hasAllPerms = requiredPerms.every(p => userPerms.includes(p));
-    test.skip(hasAllPerms, `Skipping: REG_USER unexpectedly HAS all required permissions ${JSON.stringify(requiredPerms)} for ${url}`);
+    if (hasAllPerms) {
+        console.log("Taking away perms for fun")
+        await setAllUserPermissions(process.env.REG_USER!, [0]);
+    }
+    // test.skip(hasAllPerms, `Skipping: REG_USER unexpectedly HAS all required permissions ${JSON.stringify(requiredPerms)} for ${url}`);
 
     // Sign in as non-admin
     await signin(page, process.env.REG_USER, process.env.REG_PASS);
@@ -69,6 +82,9 @@ const lackPerms = async ( page, url ) => {
     // Expect redirect
     await expect(page).toHaveURL("/home?nopermission=true");
 
+    if (hasAllPerms) {
+        await setAllUserPermissions(process.env.REG_USER!, userPerms);
+    }
 }
 
 const properPerms = async ( page, url ) => {
@@ -90,4 +106,4 @@ const properPerms = async ( page, url ) => {
 
 }
 
-export { signin, lackPerms, properPerms };
+export {signin, lackPerms, properPerms, getUserPermissions, setAllUserPermissions};

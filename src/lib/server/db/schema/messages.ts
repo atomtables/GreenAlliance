@@ -25,7 +25,7 @@ export const messages = pgTable("messages", {
     editHistory: json<{content: string, editedAt: string}[]>("edit_history").notNull().default([]),
     // was message deleted?
     deleted: boolean("deleted").notNull().default(false),
-    // attachments (array of attachment IDs)
+    // attachments (array of attachment URL tokens)
     attachments: json<string[]>("attachments").notNull().default([]),
 }, (table) => [
     // index by author for easy retrieval of user messages

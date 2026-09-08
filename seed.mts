@@ -1,12 +1,12 @@
-import { hash } from "@node-rs/argon2";
+import {hash} from "@node-rs/argon2";
 import * as crypto from "node:crypto";
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
+import {drizzle} from 'drizzle-orm/node-postgres';
+import {Pool} from 'pg';
 import * as schema from './src/lib/server/db/schema';
 import "dotenv/config";
-import { InferInsertModel } from "drizzle-orm";
+import type {InferInsertModel} from "drizzle-orm";
 import readline from "readline";
-import { type Address } from "./src/lib/types/types.js";
+import {type Address, Permission} from "./src/lib/types/types.js";
 
 console.log("TheGreenAlliance seed script ==== SHOULD NOT BE RUN IN PRODUCTION EVER ====");
 
@@ -45,33 +45,40 @@ const askQuestion = (question: string) => {
 };
 
 if (!process.env.MOD_USER) {
+    // @ts-ignore
     process.env.MOD_USER = await askQuestion("Enter admin user's username: ") as string;
 }
 if (!process.env.MOD_PASS) {
+    // @ts-ignore
     process.env.MOD_PASS = await askQuestion("Enter admin user's password: ") as string;
 }
 if (!process.env.REG_USER) {
+    // @ts-ignore
     process.env.REG_USER = await askQuestion("Enter default user's username: ") as string;
 }
-if (!process.env.REG_PASS) {    
+if (!process.env.REG_PASS) {
+    // @ts-ignore
     process.env.REG_PASS = await askQuestion("Enter default user's password: ") as string;
 }
 
 rl.close();
 
+// @ts-ignore
 const passwordHashMod = await hash(process.env.MOD_PASS, options);
-
+// @ts-ignore
 const passwordHashReg = await hash(process.env.REG_PASS, options);
 
 // First, create the subteams
 const subteamNames = ["All", "Electrical", "Mechanical", "Business", "Software"];
 for (const subteamName of subteamNames) {
+    // @ts-ignore
     await database.insert(schema.subteams).values({
         name: subteamName
     });
 }
 
 // Insert Admin
+// @ts-ignore
 await database.insert(schema.users).values({
     id: crypto.randomUUID(),
     username: process.env.MOD_USER,
@@ -79,7 +86,7 @@ await database.insert(schema.users).values({
     phone: "0123456789",
     address: defaultAddress,
     role: 5,
-    permissions: [0, 30, 31],
+    permissions: [0, 30, 31, Permission.message, Permission.message_send],
     subteam: "All",
     age: 21,
     firstName: "john",
@@ -88,6 +95,7 @@ await database.insert(schema.users).values({
 } as InferInsertModel<typeof schema.users>);
 
 // Insert Regular User
+// @ts-ignore
 await database.insert(schema.users).values({
     id: crypto.randomUUID(),
     username: process.env.REG_USER,
@@ -127,6 +135,7 @@ for (let i = 0; i < 25; i++) {
     let firstName = generateName();
     let lastName = generateName();
 
+    // @ts-ignore
     await database.insert(schema.users).values({
         id,
         username: id,
@@ -140,7 +149,8 @@ for (let i = 0; i < 25; i++) {
         firstName,
         lastName,
         email: `${firstName}.${lastName}@example.user`,
-    });
+    } as InferInsertModel<typeof schema.users>);
 }
 
+// @ts-ignore
 await pool.end();
