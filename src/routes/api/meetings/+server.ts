@@ -1,12 +1,12 @@
-import { Permission } from '$lib/types/types';
+import {Permission} from '$lib/types/types';
 import * as schema from "$lib/server/db/schema.js"
-import { error, json } from '@sveltejs/kit';
-import type { RequestHandler } from '@sveltejs/kit';
-import { db } from '$lib/server/db';
-import { eq } from 'drizzle-orm';
+import type {RequestHandler} from '@sveltejs/kit';
+import {error, json} from '@sveltejs/kit';
+import {db} from '$lib/server/db';
 import crypto from 'node:crypto';
 
 export const PUT: RequestHandler = async ({ request, locals }: any) => {
+	if (!locals.user) return error(401, "no auth...");
 	if (!locals?.user?.permissions?.includes?.(Permission.calendar_moderate)) return error(403, "Access denied.");
 
 	let { title, description, date, durationMinutes, applicableSubteams, members } = await request.json();
@@ -14,17 +14,27 @@ export const PUT: RequestHandler = async ({ request, locals }: any) => {
 
 	try {
 		// generate id so we can return it reliably to the client/tests
-		const id = crypto.randomUUID();
-		await db.insert(schema.meetings).values({
-			id,
-			createdBy: locals.user.id,
-			title,
-			description: description || null,
-			dateOf: new Date(date),
-			durationMinutes,
-			subteams: applicableSubteams || [],
-			members: members || []
-		} as any);
+		let i = 0;
+		let id: string;
+		while (true) {
+			try {
+				id = crypto.randomUUID();
+				await db.insert(schema.meetings).values({
+					id,
+					createdBy: locals.user.id,
+					title,
+					description: description || null,
+					dateOf: new Date(date),
+					durationMinutes,
+					subteams: applicableSubteams || [],
+					members: members || []
+				} as any);
+				break;
+			} catch (e: any) {
+				i++;
+				if (i > 5) throw new Error("unable to generate a valid ID. major server issue. try again later. " + e.message);
+			}
+		}
 
 		if (members && members.length > 0) {
 			await db.insert(schema.meetingAttendees).values(
@@ -41,6 +51,7 @@ export const PUT: RequestHandler = async ({ request, locals }: any) => {
 
 	} catch (e: any) {
 		if (e.name === "HttpError") throw e;
+		console.log(e);
 		return error(500, e.message || "Internal server error");
 	}
 }

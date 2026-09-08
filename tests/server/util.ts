@@ -16,12 +16,14 @@ const signin = async ( request, username = process.env.MOD_USER, password = proc
 const successfulMeetingPut = async ( request ) => {
 
     // Create meeting
-    const response = await request.put('/api/meetings', {
+    const response: Response = await request.put('/api/meetings', {
         data: {
             title: "Test Meeting",
             date: new Date().toISOString()
         }
     });
+
+    console.log(await response.text());
 
     return response;
 
