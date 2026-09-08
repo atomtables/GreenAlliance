@@ -1,10 +1,12 @@
-import { test, expect } from '@playwright/test';
-import { signin } from './util';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
-import { eq, and, inArray, desc } from 'drizzle-orm';
-import { chats, chatParticipants, messages, messagesReactions, users } from '../../src/lib/server/db/schema';
-import type { Message } from '$lib/types/messages';
+import {expect, test} from '@playwright/test';
+import {signin} from './util';
+import {drizzle} from 'drizzle-orm/node-postgres';
+import {Pool} from 'pg';
+import {and, desc, eq, inArray} from 'drizzle-orm';
+import {chatParticipants, chats, messages, messagesReactions} from '../../src/lib/server/db/schema';
+import type {Message} from '$lib/types/messages';
+import {getUserPermissions, setAllUserPermissions} from "../page/util";
+import {Permission} from "$lib/types/types";
 
 /**
  * Database connection for direct verification of data.
@@ -837,6 +839,9 @@ test.describe("Chat Messages endpoint tests (/api/messages/[chatId])", () => {
             // Give the SSE connection a moment to establish
             await new Promise(resolve => setTimeout(resolve, 1000));
 
+            const perms = await getUserPermissions(process.env.REG_USER);
+            await setAllUserPermissions(process.env.REG_USER, [...perms, Permission.message, Permission.message_send])
+
             // Send a message as the regular user (different from the SSE-connected mod user)
             await signin(request, process.env.REG_USER, process.env.REG_PASS);
             const sendResponse = await sendMessage(request, testChatId, testContent);
@@ -846,6 +851,8 @@ test.describe("Chat Messages endpoint tests (/api/messages/[chatId])", () => {
 
             // Wait for the SSE to receive the event
             const sseResult = await ssePromise;
+
+            await setAllUserPermissions(process.env.REG_USER, perms);
 
             expect(sseResult.success).toBe(true);
             expect(sseResult.message).toBeDefined();
@@ -1129,6 +1136,8 @@ test.describe("Chat Messages endpoint tests (/api/messages/[chatId])", () => {
 
         test("regular user can send messages in shared chat", async ({ request }) => {
             // Login as regular user
+            const perms = await getUserPermissions(process.env.REG_USER);
+            await setAllUserPermissions(process.env.REG_USER, [...perms, Permission.message, Permission.message_send])
             await signin(request, process.env.REG_USER, process.env.REG_PASS);
 
             const response = await sendMessage(request, testChatId, "Message from regular user");
@@ -1137,6 +1146,7 @@ test.describe("Chat Messages endpoint tests (/api/messages/[chatId])", () => {
             const body = await response.json();
             expect(body.message.author).toBe(regUserId);
             createdMessageIds.push(body.message.id);
+            await setAllUserPermissions(process.env.REG_USER, perms)
         });
 
     });
@@ -1358,6 +1368,9 @@ test.describe("Chat Messages endpoint tests (/api/messages/[chatId])", () => {
                 // Mod user reacts
                 await signin(request);
 
+                const perms = await getUserPermissions(process.env.REG_USER);
+                await setAllUserPermissions(process.env.REG_USER, [...perms, Permission.message, Permission.message_send])
+
                 const sendResp = await sendMessage(request, testChatId, "Multi-user reaction");
                 const messageId = (await sendResp.json()).message.id;
                 createdMessageIds.push(messageId);
@@ -1373,9 +1386,14 @@ test.describe("Chat Messages endpoint tests (/api/messages/[chatId])", () => {
                 const body = await regResp.json();
                 expect(body.reactions[modUserId]).toBe("👍");
                 expect(body.reactions[regUserId]).toBe("❤️");
+
+                await setAllUserPermissions(process.env.REG_USER, perms)
             });
 
             test("removing one user's reaction does not affect another user's reaction", async ({ request }) => {
+                const perms = await getUserPermissions(process.env.REG_USER);
+                await setAllUserPermissions(process.env.REG_USER, [...perms, Permission.message, Permission.message_send])
+
                 await signin(request);
 
                 const sendResp = await sendMessage(request, testChatId, "Independent reactions");
@@ -1397,6 +1415,8 @@ test.describe("Chat Messages endpoint tests (/api/messages/[chatId])", () => {
                 expect(body.reactions[modUserId]).toBe("🔥");
                 // Regular user's reaction should be gone
                 expect(body.reactions[regUserId]).toBeUndefined();
+
+                await setAllUserPermissions(process.env.REG_USER, perms)
             });
 
         });

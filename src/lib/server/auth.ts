@@ -4,9 +4,8 @@ import {encodeBase64url, encodeHexLowerCase} from '@oslojs/encoding';
 import {db} from '$lib/server/db';
 import * as table from '$lib/server/db/schema.js';
 import {hash, verify} from "@node-rs/argon2";
-import { isRedirect, redirect } from '@sveltejs/kit';
-import type { User } from '$lib/types/types';
-import type { RequestEvent } from '../../routes/$types';
+import {isRedirect, redirect} from '@sveltejs/kit';
+import type {User} from '$lib/types/types';
 
 const DAY_IN_MS = 1000 * 60 * 60 * 24;
 
@@ -91,14 +90,14 @@ export async function invalidateSession(sessionId: string) {
 	await db.delete(table.session).where(eq(table.session.id, sessionId));
 }
 
-export function setSessionTokenCookie(event: RequestEvent, token: string, expiresAt: Date) {
+export function setSessionTokenCookie(event: any, token: string, expiresAt: Date) {
 	event.cookies.set(sessionCookieName, token, {
 		expires: expiresAt,
 		path: '/'
 	});
 }
 
-export function deleteSessionTokenCookie(event: RequestEvent) {
+export function deleteSessionTokenCookie(event: any) {
 	event.cookies.delete(sessionCookieName, {
 		path: '/'
 	});
@@ -132,7 +131,7 @@ class ValidationError extends Error {
 }
 
 export let validateLogin = async (formData: FormData) => {
-	const username = formData.get('username')?.toString().toLowerCase().trim() ?? "";
+	const username = formData.get('username')?.toString().trim() ?? "";
 	const password = formData.get('password')?.toString() ?? "";
 
 	if (!validateUsername(username)) {

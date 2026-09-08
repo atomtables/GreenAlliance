@@ -27,10 +27,16 @@ export enum Permission {
     announcement_delete,
     announcement_moderate, // edit other people's announcements
     announcement_notify, // have people get emailed or texted through announcements ($$)
-    message, // only trusted adult
-    message_leads, // team lead
-    message_anyone, // anyone on the team
-    message_moderate, // see all chats
+    // message, // only trusted adult
+    // message_leads, // team lead
+    // message_anyone, // anyone on the team
+    // message_moderate, // see all chats
+    message, // ability to receive messages
+    message_send,
+    message_create_with_anyone,
+    message_create_with_leads,
+    message_create_with_adults, // if no message_create permission is selected then users cannot create.
+    message_moderate,
     attendance, // mark attendance for one day
     attendance_postpast, // mark attendance for days before
     attendance_modify, // mark attendance for others
@@ -52,6 +58,8 @@ export enum Permission {
     users, // see existing users
     users_modify, // modify existing users
     users_moderate, // see all activity performed by users
+    attachment_view,
+    attachment_upload,
 }
 
 export type User = {

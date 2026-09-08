@@ -1,19 +1,20 @@
 <script lang="ts">
+    import type {PageData} from './$types';
     import Button from "$lib/components/Button.svelte";
-    import { confirm, prompt, alert } from "$lib/components/Dialog.svelte";
+    import {alert, confirm, prompt} from "$lib/components/Dialog.svelte";
     import EmojiPicker from "$lib/components/EmojiPicker.svelte";
     import IconButton from "$lib/components/IconButton.svelte";
     import Spinner from "$lib/components/Spinner.svelte";
-    import Toast, { showToast } from "$lib/components/Toast.svelte";
-    import type { User } from "$lib/types/types";
-    import { snowflakeToDate } from "$lib/functions/Snowflake.js";
-    import { formatDate, formatDayLabel, isTailMessage, toTitleCase } from "$lib/functions/chatHelpers";
-    import type { Chat, Message } from "$lib/types/messages";
-    import { onDestroy, onMount, tick } from "svelte";
-    import { flip } from "svelte/animate";
-    import { scale, slide } from "svelte/transition";
+    import Toast, {showToast} from "$lib/components/Toast.svelte";
+    import {Permission, type User} from "$lib/types/types";
+    import {snowflakeToDate} from "$lib/functions/Snowflake.js";
+    import {formatDate, formatDayLabel, isTailMessage, toTitleCase} from "$lib/functions/chatHelpers";
+    import type {Chat, Message} from "$lib/types/messages";
+    import {onDestroy, onMount, tick} from "svelte";
+    import {flip} from "svelte/animate";
+    import {scale, slide} from "svelte/transition";
 
-    let { data } = $props();
+    let {data}: { data: PageData & { user: User } } = $props();
 
     // This is our simple SSE connection to get live updates about new messages
     let conn: EventSource | null = $state(null);
@@ -22,7 +23,7 @@
     // content. The only change that happens are UI-only variable changes.
     // For that reason, after getting data.chats from the server,
     // we store it in a local variable and modify that instead.
-    let chats: Chat[] = $state(null);
+    let chats: Chat[] = $state([]);
     // If we're at the bottom of the page, it means we can update
     // the scrolling and the last read properties. We just keep track of it here.
     let atBottom = $state(true);
@@ -38,9 +39,9 @@
     let attachmentInput = $state<HTMLInputElement | null>(null);
     let pendingAttachments = $state<PendingAttachment[]>([]);
     // This is the currently selected chat id from the sidebar
-    let currentlySelectedChatId = $state<string>(null);
+    let currentlySelectedChatId = $state<string | null>(null);
     // Using a derived store, we can always have the currently selected chat object
-    let currentlySelectedChat: Chat = $derived.by(() => {
+    let currentlySelectedChat: Chat | null = $derived.by(() => {
         if (currentlySelectedChatId == null || chats == null) return null;
         return chats.find((chat: Chat) => chat.id === currentlySelectedChatId) || null;
     });
@@ -65,6 +66,8 @@
     let isGroupChatMode = $state(false);
     let selectedGroupMembers = $state<string[]>([]);
     let groupChatName = $state("");
+    // message container
+    let messageContainer: HTMLDivElement | null = $state(null);
 
     // Group chat member colors (high-contrast with white text)
     const GROUP_MEMBER_COLORS = [
@@ -150,12 +153,12 @@
                 if (atBottom) {
                     await tick();
                     const container = document.querySelector(".flex-1.overflow-auto.p-5");
-                    container.scrollTop = container.scrollHeight;
+                    container!.scrollTop = container!.scrollHeight;
                 }
                 if (document.hasFocus()) {
                     updateLastReadForChat(msg.chatId, msg.id);
                 } else {
-                    chat!.readReceipts.count += 1;
+                    if (chat?.readReceipts) chat.readReceipts.count += 1;
                     const sender = resolvedUsers.find((u) => u.id === msg.author);
                     const senderName = sender ? toTitleCase(`${sender.firstName} ${sender.lastName}`) : "Someone";
                     const preview = msg.content.length > 50 ? msg.content.slice(0, 50) + "…" : msg.content;
@@ -163,7 +166,7 @@
                     sendBrowserNotification(senderName, preview, `msg-${msg.id}`);
                 }
             } else {
-                chat!.readReceipts.count += 1;
+                if (chat?.readReceipts) chat!.readReceipts.count += 1;
                 const sender = resolvedUsers.find((u) => u.id === msg.author);
                 const senderName = sender ? toTitleCase(`${sender.firstName} ${sender.lastName}`) : "Someone";
                 const chatName = chat?.isGroup ? (chat.name ?? "Group Chat") : senderName;
@@ -182,7 +185,7 @@
             }
             if (chats.find((v) => v.id == chatId)?.lastMessage?.id === messageId) {
                 const chat = chats.find((v) => v.id == chatId);
-                chat!.lastMessage = null;
+                if (chat) chat.lastMessage = undefined;
             }
         });
         source.addEventListener("message-edited", async (ev) => {
@@ -249,8 +252,15 @@
         }).then((res) => {
             console.log("Marked messages as read on focus:", res.status);
             if (res.ok) {
-                chat!.readReceipts.count = res.headers.get("X-Unread-Messages") ? parseInt(res.headers.get("X-Unread-Messages")) : 0;
-                chat!.readReceipts.messageId = res.headers.get("X-Last-Message-Id") || messageId;
+                if (chat?.readReceipts) {
+                    chat.readReceipts.count = res.headers.get("X-Unread-Messages") ? parseInt(res.headers.get("X-Unread-Messages")!) : 0;
+                    chat.readReceipts.messageId = res.headers.get("X-Last-Message-Id") || messageId;
+                } else {
+                    chat!.readReceipts = {
+                        messageId: res.headers.get("X-Last-Message-Id") || messageId,
+                        count: res.headers.get("X-Unread-Messages") ? parseInt(res.headers.get("X-Unread-Messages")!) : 0
+                    };
+                }
             }
         });
     };
@@ -286,7 +296,7 @@
 
         const currentChatId = currentlySelectedChatId;
         const chat = currentlySelectedChat;
-        if (currentChatId && chat && chat.readReceipts.count === 0 && stickyUnreadBoundary[currentChatId]) {
+        if (currentChatId && chat && chat.readReceipts && chat.readReceipts.count === 0 && stickyUnreadBoundary[currentChatId]) {
             stickyUnreadBoundary[currentChatId] = null;
         }
     };
@@ -328,16 +338,17 @@
                     currentlySelectedChatId = null;
                 }
                 await tick();
-                const container = document.querySelector(".flex-1.overflow-auto.p-5");
-                if (atBottom) {
-                    container.scrollTop = container.scrollHeight;
+                if (atBottom && messageContainer) {
+                    messageContainer.scrollTop = messageContainer.scrollHeight;
                 }
-                if (document.hasFocus()) {
+                if (document.hasFocus() && currentlySelectedChatId) {
                     let chat = currentlySelectedChat;
                     let message = messages[currentlySelectedChatId]?.findLast((v) => v);
                     if (!message) return;
-                    chat!.readReceipts.count = 0;
-                    chat!.readReceipts.messageId = message.id;
+                    if (chat?.readReceipts) {
+                        chat!.readReceipts.count = 0;
+                        chat!.readReceipts.messageId = message.id;
+                    }
                     fetch(`/api/messages/${currentlySelectedChatId}?messageId=${message.id}`, {
                         method: "HEAD",
                     });
@@ -349,8 +360,8 @@
     $effect(() => {
         if (!currentlySelectedChat) return;
         const chat = currentlySelectedChat;
-        if (chat.readReceipts.count > 0) {
-            stickyUnreadBoundary[chat.id] = chat.readReceipts.messageId;
+        if ((chat?.readReceipts?.count ?? 0) > 0) {
+            stickyUnreadBoundary[chat.id] = chat!.readReceipts!.messageId;
         }
     });
 
@@ -440,8 +451,7 @@
             pendingAttachments = [];
             if (atBottom) {
                 await tick();
-                const container = document.querySelector(".flex-1.overflow-auto.p-5");
-                container.scrollTop = container.scrollHeight;
+                messageContainer!.scrollTop = messageContainer!.scrollHeight;
             }
         } else {
             const errData = await res.json().catch(() => ({}));
@@ -505,8 +515,8 @@
         if (res.ok) {
             messages[message.chatId] = messages[message.chatId].filter((m) => m.id !== message.id);
             const chat = chats.find((v) => v.id == message.chatId);
-            if (chat?.lastMessage?.id === message.id) {
-                chat.lastMessage = null;
+            if (chat && chat.lastMessage?.id === message.id) {
+                chat.lastMessage = undefined;
             }
         } else {
             console.error("Failed to delete message:", res.statusText);
@@ -599,7 +609,7 @@
             }
         } else {
             const err = await res.json();
-            alert("Error", err.error || "Failed to create chat");
+            await alert("Error", err.error || "Failed to create chat");
         }
 
         showNewChatDropdown = false;
@@ -608,7 +618,7 @@
 
     const createGroupChat = async () => {
         if (selectedGroupMembers.length === 0) {
-            alert("Error", "Please select at least one other person for the group chat");
+            await alert("Error", "Please select at least one other person for the group chat");
             return;
         }
         const formData = new FormData();
@@ -641,7 +651,7 @@
             }
         } else {
             const err = await res.json();
-            alert("Error", err.error || "Failed to create group chat");
+            await alert("Error", err.error || "Failed to create group chat");
         }
 
         showNewChatDropdown = false;
@@ -656,97 +666,112 @@
 
 <div class="w-full h-full lg:p-10">
     <div class="w-full h-full flex flex-row flex-nowrap border-gray-600">
-        <div class="shadow-[25px_-5px_20px_-12px_rgb(0_0_0_/_0.25)] w-64 lg:w-96 bg-gray-600 shrink-0">
-            <div class="w-full bg-green-700 font-bold text-xl flex justify-between items-center py-2 shadow-2xl">
+        <div class="shadow-[25px_-5px_20px_-12px_rgb(0_0_0/0.25)] w-64 lg:w-96 bg-gray-600 shrink-0">
+            <div class="w-full bg-green-700 font-bold text-xl flex justify-between items-center py-2 shadow-2xl min-h-14">
                 <div class="px-4">CHATS</div>
                 <div class="flex flex-row gap-2" data-new-chat-dropdown>
-                    <div class="relative">
-                        <IconButton onclick={() => { showNewChatDropdown = !showNewChatDropdown; newChatSearch = ""; isGroupChatMode = false; selectedGroupMembers = []; groupChatName = ""; }}><span class="material-symbols-outlined icons-fill">add</span></IconButton>
-                        {#if showNewChatDropdown}
-                            <div class="absolute left-0 top-full mt-1 z-50 w-72 bg-gray-800 shadow-2xl overflow-hidden" transition:slide={{ duration: 150 }}>
-                                <div class="flex border-b border-gray-700 bg-green-800">
-                                    <button
-                                        onclick={() => { isGroupChatMode = false; selectedGroupMembers = []; groupChatName = ""; }}
-                                        class="p-2 text-xs font-semibold {!isGroupChatMode ? ' hover:bg-neutral-400/40 bg-neutral-400/40 text-white border-b-white border-b-2' : 'text-gray-300 hover:text-white  hover:bg-neutral-400/40'} transition-colors"
-                                    >Direct Message</button>
-                                    <button
-                                        onclick={() => { isGroupChatMode = true; }}
-                                        class="p-2 text-xs font-semibold {isGroupChatMode ? ' hover:bg-neutral-400/40 bg-neutral-400/40 text-white border-b-white border-b-2' : 'text-gray-300 hover:text-white  hover:bg-neutral-400/40'} transition-colors"
-                                    >Group Chat</button>
-                                </div>
-                                <div class="p-2">
-                                    <input
-                                        bind:value={newChatSearch}
-                                        type="text"
-                                        placeholder="Search users..."
-                                        class="w-full bg-gray-700 text-white text-sm px-3 py-2 rounded placeholder-gray-400 border-0 focus:outline-none focus:ring-1 focus:ring-green-500"
-                                    />
-                                </div>
-                                {#if isGroupChatMode}
-                                    <div class="px-2 pb-1">
+                    {#if data.user.permissions.includes(Permission.message_create_with_adults) ||
+                    data.user.permissions.includes(Permission.message_create_with_leads) ||
+                    data.user.permissions.includes(Permission.message_create_with_anyone)}
+                        <div class="relative">
+                            <IconButton
+                                    onclick={() => { showNewChatDropdown = !showNewChatDropdown; newChatSearch = ""; isGroupChatMode = false; selectedGroupMembers = []; groupChatName = ""; }}>
+                                <span class="material-symbols-outlined icons-fill">add</span></IconButton>
+                            {#if showNewChatDropdown}
+                                <div class="absolute left-0 top-full mt-1 z-50 w-72 bg-gray-800 shadow-2xl overflow-hidden"
+                                     transition:slide={{ duration: 150 }}>
+                                    <div class="flex border-b border-gray-700 bg-green-800">
+                                        <button
+                                                onclick={() => { isGroupChatMode = false; selectedGroupMembers = []; groupChatName = ""; }}
+                                                class="p-2 text-xs font-semibold {!isGroupChatMode ? ' hover:bg-neutral-400/40 bg-neutral-400/40 text-white border-b-white border-b-2' : 'text-gray-300 hover:text-white  hover:bg-neutral-400/40'} transition-colors"
+                                        >Direct Message
+                                        </button>
+                                        <button
+                                                onclick={() => { isGroupChatMode = true; }}
+                                                class="p-2 text-xs font-semibold {isGroupChatMode ? ' hover:bg-neutral-400/40 bg-neutral-400/40 text-white border-b-white border-b-2' : 'text-gray-300 hover:text-white  hover:bg-neutral-400/40'} transition-colors"
+                                        >Group Chat
+                                        </button>
+                                    </div>
+                                    <div class="p-2">
                                         <input
-                                            bind:value={groupChatName}
-                                            type="text"
-                                            placeholder="Group name (optional)..."
-                                            class="w-full bg-gray-700 text-white text-sm px-3 py-2 rounded placeholder-gray-400 border-0 focus:outline-none focus:ring-1 focus:ring-green-500"
+                                                bind:value={newChatSearch}
+                                                type="text"
+                                                placeholder="Search users..."
+                                                class="w-full bg-gray-700 text-white text-sm px-3 py-2 rounded placeholder-gray-400 border-0 focus:outline-none focus:ring-1 focus:ring-green-500"
                                         />
                                     </div>
-                                {/if}
-                                <div class="max-h-60 overflow-y-auto">
-                                    {#await data.allowedUsers}
-                                        <div class="flex justify-center p-3"><Spinner /></div>
-                                    {:then users}
-                                        {@const filtered = users.filter((u) => u.id !== data.user.id && (newChatSearch === "" || `${u.firstName} ${u.lastName}`.toLowerCase().includes(newChatSearch.toLowerCase())))}
-                                        {#if filtered.length === 0}
-                                            <div class="text-sm text-gray-400 text-center py-3">No users found</div>
-                                        {:else}
-                                            {#each filtered as user}
-                                                {#if isGroupChatMode}
-                                                    <button
-                                                        onclick={() => {
+                                    {#if isGroupChatMode}
+                                        <div class="px-2 pb-1">
+                                            <input
+                                                    bind:value={groupChatName}
+                                                    type="text"
+                                                    placeholder="Group name (optional)..."
+                                                    class="w-full bg-gray-700 text-white text-sm px-3 py-2 rounded placeholder-gray-400 border-0 focus:outline-none focus:ring-1 focus:ring-green-500"
+                                            />
+                                        </div>
+                                    {/if}
+                                    <div class="max-h-60 overflow-y-auto">
+                                        {#await data.allowedUsers}
+                                            <div class="flex justify-center p-3">
+                                                <Spinner/>
+                                            </div>
+                                        {:then users}
+                                            {@const
+                                                filtered = users.filter((u) => u.id !== data.user.id && (newChatSearch === "" || `${u.firstName} ${u.lastName}`.toLowerCase().includes(newChatSearch.toLowerCase())))}
+                                            {#if filtered.length === 0}
+                                                <div class="text-sm text-gray-400 text-center py-3">No users found</div>
+                                            {:else}
+                                                {#each filtered as user}
+                                                    {#if isGroupChatMode}
+                                                        <button
+                                                                onclick={() => {
                                                             if (selectedGroupMembers.includes(user.id)) {
                                                                 selectedGroupMembers = selectedGroupMembers.filter(id => id !== user.id);
                                                             } else {
                                                                 selectedGroupMembers = [...selectedGroupMembers, user.id];
                                                             }
                                                         }}
-                                                        class="flex items-center gap-3 w-full px-3 py-2 text-left text-sm hover:bg-neutral-500/40 active:bg-neutral-400/40 transition-colors {selectedGroupMembers.includes(user.id) ? 'bg-green-800/40' : ''}"
-                                                    >
-                                                        <div class="w-5 h-5 rounded border-2 {selectedGroupMembers.includes(user.id) ? 'bg-green-500 border-green-500' : 'border-gray-400'} flex items-center justify-center shrink-0">
-                                                            {#if selectedGroupMembers.includes(user.id)}
-                                                                <span class="material-symbols-outlined text-white" style="font-size: 14px;">check</span>
-                                                            {/if}
-                                                        </div>
-                                                        <img src={user.avatar || "/noprofile.png"} alt="avatar" class="w-8 h-8 rounded-full bg-gray-500" />
-                                                        <span>{toTitleCase(`${user.firstName} ${user.lastName}`)}</span>
-                                                    </button>
-                                                {:else}
-                                                    <button
-                                                        onclick={() => createChat(user.id)}
-                                                        class="flex items-center gap-3 w-full px-3 py-2 text-left text-sm hover:bg-neutral-500/40 active:bg-neutral-400/40 transition-colors"
-                                                    >
-                                                        <img src={user.avatar || "/noprofile.png"} alt="avatar" class="w-8 h-8 rounded-full bg-gray-500" />
-                                                        <span>{toTitleCase(`${user.firstName} ${user.lastName}`)}</span>
-                                                    </button>
-                                                {/if}
-                                            {/each}
-                                        {/if}
-                                    {/await}
-                                </div>
-                                {#if isGroupChatMode}
-                                    <div class="p-2 border-t border-gray-700">
-                                        <button
-                                            onclick={() => createGroupChat()}
-                                            class="w-full py-2 bg-green-600 hover:bg-green-500 active:bg-green-700 text-white text-sm font-semibold rounded transition-colors disabled:opacity-50"
-                                            disabled={selectedGroupMembers.length === 0}
-                                        >
-                                            Create Group ({selectedGroupMembers.length} selected)
-                                        </button>
+                                                                class="flex items-center gap-3 w-full px-3 py-2 text-left text-sm hover:bg-neutral-500/40 active:bg-neutral-400/40 transition-colors {selectedGroupMembers.includes(user.id) ? 'bg-green-800/40' : ''}"
+                                                        >
+                                                            <div class="w-5 h-5 rounded border-2 {selectedGroupMembers.includes(user.id) ? 'bg-green-500 border-green-500' : 'border-gray-400'} flex items-center justify-center shrink-0">
+                                                                {#if selectedGroupMembers.includes(user.id)}
+                                                                    <span class="material-symbols-outlined text-white"
+                                                                          style="font-size: 14px;">check</span>
+                                                                {/if}
+                                                            </div>
+                                                            <img src={user.avatar || "/noprofile.png"} alt="avatar"
+                                                                 class="w-8 h-8 rounded-full bg-gray-500"/>
+                                                            <span>{toTitleCase(`${user.firstName} ${user.lastName}`)}</span>
+                                                        </button>
+                                                    {:else}
+                                                        <button
+                                                                onclick={() => createChat(user.id)}
+                                                                class="flex items-center gap-3 w-full px-3 py-2 text-left text-sm hover:bg-neutral-500/40 active:bg-neutral-400/40 transition-colors"
+                                                        >
+                                                            <img src={user.avatar || "/noprofile.png"} alt="avatar"
+                                                                 class="w-8 h-8 rounded-full bg-gray-500"/>
+                                                            <span>{toTitleCase(`${user.firstName} ${user.lastName}`)}</span>
+                                                        </button>
+                                                    {/if}
+                                                {/each}
+                                            {/if}
+                                        {/await}
                                     </div>
-                                {/if}
-                            </div>
-                        {/if}
-                    </div>
+                                    {#if isGroupChatMode}
+                                        <div class="p-2 border-t border-gray-700">
+                                            <button
+                                                    onclick={() => createGroupChat()}
+                                                    class="w-full py-2 bg-green-600 hover:bg-green-500 active:bg-green-700 text-white text-sm font-semibold rounded transition-colors disabled:opacity-50"
+                                                    disabled={selectedGroupMembers.length === 0}
+                                            >
+                                                Create Group ({selectedGroupMembers.length} selected)
+                                            </button>
+                                        </div>
+                                    {/if}
+                                </div>
+                            {/if}
+                        </div>
+                    {/if}
                 </div>
             </div>
             {#if chats == null}
@@ -758,10 +783,11 @@
             {:else}
                 {#each chats.filter((v) => v) as chat, ind}
                     <button
-                        onclick={() => {
+                            data-testid="chat-button-{chat.id}"
+                            onclick={() => {
                             currentlySelectedChatId = chat.id;
                         }}
-                        class="block grow w-full {chat.id === currentlySelectedChatId ? 'bg-neutral-500/50' : 'hover:bg-neutral-500/25 active:bg-neutral-500/50'} font-bold py-5 px-2 text-lg flex items-center justify-between gap-2 transition-all"
+                            class="block grow w-full {chat.id === currentlySelectedChatId ? 'bg-neutral-500/50' : 'hover:bg-neutral-500/25 active:bg-neutral-500/50'} font-bold py-5 px-2 text-lg flex items-center justify-between gap-2 transition-all"
                     >
                         <div class="flex flex-row items-center gap-2">
                             <div class="shrink-0 px-2">
@@ -801,7 +827,8 @@
                                                 {#await data.users}
                                                     <span>Loading...</span>
                                                 {:then users}
-                                                    {@const author = users.find((u) => u.id === chat.lastMessage.author)}
+                                                    {@const
+                                                        author = users.find((u) => u.id === chat.lastMessage!.author)}
                                                     {@const authorName = author ? `${author.firstName}` : "Unknown"}
                                                     {toTitleCase(authorName)}:
                                                 {/await}
@@ -814,15 +841,15 @@
                                 </div>
                             </div>
                         </div>
-                        {#if chat.readReceipts.count > 0}
-                            <div class="text-white bg-green-600 grid place-items-center aspect-square w-5 text-xs m-1 rounded-full">{chat.readReceipts.count}</div>
+                        {#if (chat?.readReceipts?.count || 0) > 0}
+                            <div class="text-white bg-green-600 grid place-items-center aspect-square w-5 text-xs m-1 rounded-full">{chat!.readReceipts!.count}</div>
                         {/if}
                     </button>
                 {/each}
             {/if}
         </div>
         <div
-            class="bg-gray-600/50 flex-1 grow-1"
+                class="bg-gray-600/50 flex-1 grow-1"
         >
             {#await data.users then users}
                 {@const chat = currentlySelectedChat}
@@ -831,7 +858,7 @@
                     {@const user = users.find((u) => u.id === other)}
                     {@const chatDisplayName = chat.isGroup ? (chat.name ?? "Group Chat") : (user ? toTitleCase(`${user.firstName} ${user.lastName}`) : "Unknown User")}
 
-                    {#snippet chatBubble(isMine, message, tail, stamp, reactionGroups, i)}
+                    {#snippet chatBubble(isMine: boolean, message: Message, tail: boolean, stamp: Date, reactionGroups: [emj: string, count: number][], i: number)}
                         {@const msgAuthor = !isMine ? (chat.isGroup ? users.find(u => u.id === message.author) : user) : null}
                         {@const bubbleBgColor = isMine ? 'inherit' : (chat.isGroup ? getGroupMemberColorHex(message.author) : 'inherit')}
                         <div class="{isMine ? 'self-end' : 'self-start'} max-w-1/2 flex flex-col {isMine ? 'items-end' : 'items-start'} gap-1 group" data-menu-container>
@@ -844,11 +871,11 @@
                                 {#if isMine}
                                     <div class="relative inline-block self-center">
                                         <IconButton
-                                            onclick={() => {
+                                                onclick={() => {
                                                 openMenuForMessage = openMenuForMessage === message.id ? null : message.id;
                                             }}
-                                            transparent
-                                            class="self-center !p-0 grid place-items-center [&]:opacity-0 {openMenuForMessage === message.id ? 'opacity-100! bg-neutral-400/50 hover:bg-neutral-400/50' : ''} group-hover:opacity-100! transition duration-150 ease-out"
+                                                transparent
+                                                class="self-center p-0! grid place-items-center [&]:opacity-0 {openMenuForMessage === message.id ? 'opacity-100! bg-neutral-400/50 hover:bg-neutral-400/50' : ''} group-hover:opacity-100! transition duration-150 ease-out"
                                         >
                                             more_vert
                                         </IconButton>
@@ -869,16 +896,16 @@
                                 {/if}
                                 <div class="relative {isMine ? 'bg-green-600!' : 'bg-gray-600!'} text-white p-3 shadow-md break-words rounded-md" style="background-color: {bubbleBgColor};">
                                     <div
-                                        class="absolute bg-gray-700 flex rounded-full {isMine ? 'flex-row' : 'flex-row-reverse'} items-center z-10 transition-all {openEmojiSelectorForMessage === message.id || reactionGroups.length > 0 ? 'opacity-100' : 'opacity-0'} group-hover:opacity-100"
-                                        style="top: -14px; {isMine ? 'right' : 'left'}: calc(100% - 14px);"
+                                            class="absolute bg-gray-700 flex rounded-full {isMine ? 'flex-row' : 'flex-row-reverse'} items-center z-10 transition-all {openEmojiSelectorForMessage === message.id || reactionGroups.length > 0 ? 'opacity-100' : 'opacity-0'} group-hover:opacity-100"
+                                            style="top: -14px; {isMine ? 'right' : 'left'}: calc(100% - 14px);"
                                     >
                                         <div class="relative">
                                             <IconButton
-                                                onclick={() => {
+                                                    onclick={() => {
                                                     openEmojiSelectorForMessage = openEmojiSelectorForMessage === message.id ? null : message.id;
                                                 }}
-                                                transparent
-                                                class="transition-all text-sm p-0! aspect-square! self-center w-7 duration-150 ease-out"
+                                                    transparent
+                                                    class="transition-all text-sm p-0! aspect-square! self-center w-7 duration-150 ease-out"
                                             >
                                                 add_reaction
                                             </IconButton>
@@ -894,9 +921,9 @@
                                         </div>
                                         {#each reactionGroups as [emj, count]}
                                             <button
-                                                onclick={(e) => { e.stopPropagation(); openReactionListForMessage = openReactionListForMessage === message.id ? null : message.id; }}
-                                                class="rounded-full text-sm p-1 flex items-center select-none cursor-pointer hover:bg-gray-600 transition-colors"
-                                                data-reaction-list
+                                                    onclick={(e) => { e.stopPropagation(); openReactionListForMessage = openReactionListForMessage === message.id ? null : message.id; }}
+                                                    class="rounded-full text-sm p-1 flex items-center select-none cursor-pointer hover:bg-gray-600 transition-colors"
+                                                    data-reaction-list
                                             >
                                                 <span>{emj}</span>{#if count > 1}<span class="text-xs ml-0.5">{count}</span>{/if}
                                             </button>
@@ -920,7 +947,7 @@
                                     </div>
                                     {message.content}
                                     {#if tail}
-                                        <div class="absolute {isMine ? '-right-2' : '-left-2'} bottom-0 w-0 h-0 border-solid border-t-[15px] border-t-transparent {isMine ? 'border-l-[15px] border-l-green-600' : 'border-r-[15px] border-r-gray-600'}"></div>
+                                        <div class="absolute {isMine ? '-right-2' : '-left-2'} bottom-0 w-0 h-0 border-solid border-t-15 border-t-transparent {isMine ? 'border-l-[15px] border-l-green-600' : 'border-r-[15px] border-r-gray-600'}"></div>
                                     {/if}
                                     {#if message.edited}
                                         <div class="text-[0.625rem] text-white/70 italic pt-0.5 select-none">Edited</div>
@@ -935,11 +962,11 @@
                                 {:else}
                                     <div class="relative inline-block self-center">
                                         <IconButton
-                                            onclick={() => {
+                                                onclick={() => {
                                                 openMenuForMessage = openMenuForMessage === message.id ? null : message.id;
                                             }}
-                                            transparent
-                                            class="self-center !p-0 grid place-items-center [&]:opacity-0 {openMenuForMessage === message.id ? 'opacity-100! bg-neutral-400/50 hover:bg-neutral-400/50' : ''} group-hover:opacity-100! transition duration-150 ease-out"
+                                                transparent
+                                                class="self-center !p-0 grid place-items-center [&]:opacity-0 {openMenuForMessage === message.id ? 'opacity-100! bg-neutral-400/50 hover:bg-neutral-400/50' : ''} group-hover:opacity-100! transition duration-150 ease-out"
                                         >
                                             more_vert
                                         </IconButton>
@@ -967,20 +994,21 @@
                                         <span class="material-symbols-outlined icons-fill">phone</span>
                                     </IconButton>
                                 {/if}
-                                {#if !chat.isGroup}
+                                {#if !chat.isGroup && user?.email}
                                     <IconButton onclick={() => (window.location.href = `mailto:${user.email}`)}><span class="material-symbols-outlined icons-fill">email</span></IconButton>
                                 {/if}
                                 <IconButton onclick={() => null}><span class="material-symbols-outlined icons-fill">info</span></IconButton>
                             </div>
                         </div>
-                        <div 
-                            class="flex-1 overflow-auto p-5"
-                            onscroll={async (event: Event) => {
+                        <div
+                                bind:this={messageContainer}
+                                class="flex-1 overflow-auto p-5"
+                                onscroll={async (event: Event) => {
                                 const target = event.target as HTMLElement;
                                 const threshold = 20; // pixels from the bottom to consider "at bottom"
                                 atBottom = target.scrollHeight - target.scrollTop - target.clientHeight <= threshold;
-
-                                const chatId = currentlySelectedChatId;
+                                if (!currentlySelectedChatId) return;
+                                const chatId = currentlySelectedChatId as string;
                                 console.log(target.scrollTop, target.scrollHeight, target.clientHeight, atBottom, isLoadingMore, allLoaded[chatId]);
                                 if (target.scrollTop <= 20 && !isLoadingMore && !allLoaded[chatId]) {
                                     isLoadingMore = true;
@@ -1020,7 +1048,8 @@
                             {:else if messages[chat.id].length === 0}
                                 <div class="w-full flex justify-center items-center p-5 gap-2 font-bold text-lg text-gray-300">No messages yet. Say hello!</div>
                             {:else}
-                                {@const liveUnreadId = chat.readReceipts.count > 0 ? chat.readReceipts.messageId : null}
+                                {@const
+                                    liveUnreadId = (chat?.readReceipts?.count || 0) > 0 ? chat?.readReceipts?.messageId : null}
                                 {@const stickyUnreadId = stickyUnreadBoundary[chat.id] ?? null}
                                 {@const unreadBoundaryId = liveUnreadId ?? stickyUnreadId}
                                 <div class="flex flex-col gap-1 w-full">
@@ -1055,6 +1084,7 @@
                             {/if}
                         </div>
                         <div>
+                            {const canSendMessage = data.user.permissions.includes(Permission.message_send)}
                             <div class="w-full bg-gray-700 p-2 flex flex-row gap-2 items-center">
                                 <div class="relative flex items-center gap-1">
                                     {#if showEmojiPicker}
@@ -1065,23 +1095,35 @@
                                     <IconButton onclick={() => showEmojiPicker = !showEmojiPicker} transparent>
                                         <span class="material-symbols-outlined icons-fill">emoji_emotions</span>
                                     </IconButton>
-                                    <IconButton onclick={() => attachmentInput?.click()} transparent>
-                                        <span class="material-symbols-outlined icons-fill">attach_file</span>
-                                    </IconButton>
-                                    <input
-                                        bind:this={attachmentInput}
-                                        type="file"
-                                        class="hidden"
-                                        multiple
-                                        onchange={handleAttachmentSelection}
-                                    />
+                                    {const user = data.user}
+                                    {@debug user}
+                                    {#if data.user.permissions.includes(Permission.attachment_upload)}
+
+                                        <IconButton onclick={() => attachmentInput?.click()} transparent>
+                                            <span class="material-symbols-outlined icons-fill">attach_file</span>
+                                        </IconButton>
+                                        <input
+                                                bind:this={attachmentInput}
+                                                type="file"
+                                                class="hidden"
+                                                multiple
+                                                onchange={handleAttachmentSelection}
+                                        />
+                                    {/if}
                                 </div>
                                 <div class="relative flex-1 group -mt-1.5">
-                                    <input bind:value={newMessage} type="text" placeholder="Type a message..." class="w-full bg-gray-700 text-white px-2 pt-2 pb-1 placeholder-gray-300 border-0 focus:outline-none focus:ring-0 focus:border-transparent" onkeydown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }} />
-                                    <div class="absolute left-2 right-2 bottom-0 h-px bg-gray-600"></div>
-                                    <div class="absolute left-2 right-2 bottom-0 h-0.5 bg-green-400 scale-x-0 group-focus-within:scale-x-100 transition-transform duration-200 origin-left"></div>
+                                    <input bind:value={newMessage} type="text"
+                                           disabled={!data.user.permissions.includes(Permission.message_send)}
+                                           placeholder={data.user.permissions.includes(Permission.message_send) ? "Type a message..." : "You may not send messages in this chat."}
+                                           class="w-full bg-gray-700 text-white px-2 pt-2 pb-1 placeholder-gray-300 disabled:placeholder:italic border-0 focus:outline-none focus:ring-0 focus:border-transparent"
+                                           onkeydown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}/>
+                                    {#if data.user.permissions.includes(Permission.message_send)}
+                                        <div class="absolute left-2 right-2 bottom-0 h-px bg-gray-600"></div>
+                                        <div class="absolute left-2 right-2 bottom-0 h-0.5 bg-green-400 scale-x-0 group-focus-within:scale-x-100 transition-transform duration-200 origin-left"></div>
+                                    {/if}
                                 </div>
-                                <IconButton onclick={() => sendMessage()} transparent>
+                                <IconButton disabled={!data.user.permissions.includes(Permission.message_send)}
+                                            onclick={() => sendMessage()} transparent>
                                     <span class="material-symbols-outlined icons-fill">send</span>
                                 </IconButton>
                             </div>

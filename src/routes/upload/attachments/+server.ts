@@ -1,9 +1,16 @@
-import type { RequestHandler } from "@sveltejs/kit";
-import { db } from "$lib/server/db";
-import { attachments } from "$lib/server/db/schema";
-import { RequiresPermissions } from "$lib/functions/requirePermissions";
-import { Permission } from "$lib/types/types";
-import { buildFileUrl, buildRelativePath, buildUniqueFilename, resolveSafePath, uploadRoot, uploadSubdirs } from "$lib/server/upload";
+import type {RequestHandler} from "@sveltejs/kit";
+import {db} from "$lib/server/db";
+import {attachments} from "$lib/server/db/schema";
+import {RequiresPermissions} from "$lib/functions/requirePermissions";
+import {Permission} from "$lib/types/types";
+import {
+    buildFileUrl,
+    buildRelativePath,
+    buildUniqueFilename,
+    resolveSafePath,
+    uploadRoot,
+    uploadSubdirs
+} from "$lib/server/upload";
 import fs from "node:fs/promises";
 
 export const POST: RequestHandler = async ({ request, locals }) => {
