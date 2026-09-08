@@ -1,9 +1,9 @@
-import { Permission } from '$lib/types/types';
+import {Permission} from '$lib/types/types';
 import * as schema from "$lib/server/db/schema.js"
-import { error, json } from '@sveltejs/kit';
-import type { RequestHandler } from '@sveltejs/kit';
-import { db } from '$lib/server/db';
-import { eq } from 'drizzle-orm';
+import type {RequestHandler} from '@sveltejs/kit';
+import {error, json} from '@sveltejs/kit';
+import {db} from '$lib/server/db';
+import {eq} from 'drizzle-orm';
 
 export const GET: RequestHandler = async ({ params, locals }: any) => {
 	if (!locals?.user) return error(401, "Unauthorized");
@@ -15,6 +15,8 @@ export const GET: RequestHandler = async ({ params, locals }: any) => {
 		const meeting = await db.query.meetings.findFirst({
 			where: eq(schema.meetings.id, meetingId)
 		});
+
+		console.log(meeting)
 
 		if (!meeting) return error(404, "Meeting not found");
 
@@ -60,18 +62,22 @@ export const PATCH: RequestHandler = async ({ request, params, locals }: any) =>
 }
 
 export const DELETE: RequestHandler = async ({ params, locals }: any) => {
+	if (!locals.user) return error(401, "Access no auth lmfao laugh at this guy/girl/x");
 	if (!locals?.user?.permissions?.includes?.(Permission.calendar_moderate)) return error(403, "Access denied.");
 
 	const { meetingId } = params;
 	if (!meetingId) return error(400, "Missing required parameter: meetingId");
 
+	let x;
 	try {
-		await db.delete(schema.meetings).where(eq(schema.meetings.id, meetingId));
+		x = await db.delete(schema.meetings).where(eq(schema.meetings.id, meetingId));
 	} catch (e: any) {
 		if (e.name === "HttpError") throw e;
 		console.log(e);
 		return error(500, e.message || "Internal server error");
 	}
+
+	if (x.rowCount == 0) return error(404, "Invalid meeting ID")
 
 	return json({ success: true, data: {} }, { status: 200 })
 }

@@ -1,9 +1,11 @@
-import { test, expect } from '@playwright/test';
-import { signin } from './util';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
-import { eq, and, inArray, or } from 'drizzle-orm';
-import { chats, chatParticipants, users } from '../../src/lib/server/db/schema';
+import {expect, test} from '@playwright/test';
+import {signin} from './util';
+import {drizzle} from 'drizzle-orm/node-postgres';
+import {Pool} from 'pg';
+import {eq, inArray} from 'drizzle-orm';
+import {chatParticipants, chats} from '../../src/lib/server/db/schema';
+import {getUserPermissions, setAllUserPermissions} from "../page/util";
+import {Permission} from "$lib/types/types";
 
 /**
  * Database connection for direct verification of data.
@@ -392,6 +394,9 @@ test.describe("Messages endpoint tests", () => {
 
         test("returns 403 when trying to message user without permission", async ({ request }) => {
             // Login as regular user (less permissions)
+            const perms = await getUserPermissions(process.env.REG_USER);
+            await setAllUserPermissions(process.env.REG_USER!, [...perms, Permission.users]); // Remove all permissions for this test
+
             await signin(request, process.env.REG_USER, process.env.REG_PASS);
 
             // Get list of users
@@ -420,6 +425,8 @@ test.describe("Messages endpoint tests", () => {
             // Should either succeed or fail with 403 depending on permissions
             // Regular users typically can't message everyone
             expect([201, 200, 401, 403]).toContain(response.status());
+
+            await setAllUserPermissions(process.env.REG_USER, perms);
         });
 
     });

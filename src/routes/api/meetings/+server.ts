@@ -55,4 +55,3 @@ export const PUT: RequestHandler = async ({ request, locals }: any) => {
 		return error(500, e.message || "Internal server error");
 	}
 }
-

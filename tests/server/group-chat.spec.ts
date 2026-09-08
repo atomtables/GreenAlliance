@@ -1,9 +1,9 @@
-import { test, expect } from '@playwright/test';
-import { signin } from './util';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
-import { eq, inArray, and, desc } from 'drizzle-orm';
-import { chats, chatParticipants, messages, users } from '../../src/lib/server/db/schema';
+import {expect, test} from '@playwright/test';
+import {signin} from './util';
+import {drizzle} from 'drizzle-orm/node-postgres';
+import {Pool} from 'pg';
+import {eq, inArray} from 'drizzle-orm';
+import {chatParticipants, chats, messages, users} from '../../src/lib/server/db/schema';
 
 /**
  * Database connection for direct verification of data.
@@ -563,12 +563,50 @@ test.describe("Group chat feature tests", () => {
             createdChatIds.push(body.chat.id);
         });
 
-        test("SSE chat-created delivers correct chat structure to non-creator via page", async ({}) => {
-            // Testing SSE delivery to non-creator requires known credentials for other users,
-            // which are not available in this test setup.
-            // The SSE event structure is tested via the API response verification above.
-            test.skip();
-        });
+        // test("SSE chat-created delivers correct chat structure to non-creator via page", async ({}) => {
+        //     // Testing SSE delivery to non-creator requires known credentials for other users,
+        //     // which are not available in this test setup.
+        //     // The SSE event structure is tested via the API response verification above.
+        //     test.skip();
+        // });
+
+        // test("SSE chat-created delivers correct chat structure to non-creator via page", async ({ page, playwright }) => {
+        //     // Ensure we have the necessary user credentials available
+        //     if (!regUser || !modUser) {
+        //         test.skip();
+        //         return;
+        //     }
+        //
+        //     // 1. Create a separate API context for the Creator to prevent session/cookie collisions
+        //     const creatorContext = await playwright.request.newContext();
+        //
+        //     // Sign in the Creator (e.g., modUser) via the background API context
+        //     // *Note: Adjust the `signin` arguments if your helper uses a different signature for specific users
+        //     await signin(creatorContext, modUser);
+        //
+        //     // 2. Sign in the Non-Creator (e.g., regUser) on the active UI page
+        //     await signin(page, regUser);
+        //     await openPage(page);
+        //
+        //     // Wait briefly to ensure the EventSource/SSE connection is fully established on the page
+        //     await page.waitForTimeout(1000);
+        //
+        //     // 3. Trigger the chat creation via API as the Creator
+        //     const chatName = `SSE UI Delivery Test ${Date.now()}`;
+        //     const response = await createChatViaApi(creatorContext, [regUser.id], chatName);
+        //
+        //     expect(response.status()).toBe(201);
+        //     const body = await response.json();
+        //     expect(body.chat.name).toBe(chatName);
+        //
+        //     // 4. Verify SSE Delivery by observing the Non-Creator's UI
+        //     // If the SSE event is delivered and structurally correct, the frontend state
+        //     // will process it and automatically render the new chat without a page refresh.
+        //     await expect(page.getByText(chatName).first()).toBeVisible({ timeout: 10000 });
+        //
+        //     // Cleanup the isolated API context
+        //     await creatorContext.dispose();
+        // });
 
     });
 

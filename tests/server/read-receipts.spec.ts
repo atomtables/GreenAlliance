@@ -1,9 +1,11 @@
-import { test, expect } from '@playwright/test';
-import { signin } from './util';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
-import { eq, inArray, and, gt, ne } from 'drizzle-orm';
-import { chats, chatParticipants, messages, messagesReadReceipts, users } from '../../src/lib/server/db/schema';
+import {expect, test} from '@playwright/test';
+import {signin} from './util';
+import {drizzle} from 'drizzle-orm/node-postgres';
+import {Pool} from 'pg';
+import {and, eq, inArray} from 'drizzle-orm';
+import {chatParticipants, chats, messages, messagesReadReceipts} from '../../src/lib/server/db/schema';
+import {getUserPermissions, setAllUserPermissions} from "../page/util";
+import {Permission} from "$lib/types/types";
 
 /**
  * Database connection for direct verification of data.
@@ -345,6 +347,9 @@ test.describe("Read receipts (HEAD /api/messages/[chatId])", () => {
     test.describe("Read receipts are per-user", () => {
 
         test("mod user and reg user have independent read receipts", async ({ request }) => {
+            let perms = await getUserPermissions(process.env.REG_USER);
+            await setAllUserPermissions(process.env.REG_USER, [...perms, Permission.message, Permission.message_send])
+
             await signin(request);
 
             // Send two messages as mod user
@@ -392,6 +397,8 @@ test.describe("Read receipts (HEAD /api/messages/[chatId])", () => {
             expect(regReceipt[0].messageId).toBe(msg2Id);
             // Verify they differ
             expect(modReceipt[0].messageId).not.toBe(regReceipt[0].messageId);
+
+            await setAllUserPermissions(process.env.REG_USER, perms)
         });
 
     });
