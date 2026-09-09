@@ -1,5 +1,5 @@
 <script module lang="ts">
-    import { createRawSnippet, mount, unmount } from 'svelte';
+    import { createRawSnippet, mount, unmount, type Snippet } from 'svelte';
     import Dialog from './Dialog.svelte';
     import Input from '$lib/components/Input.svelte';
 
@@ -11,11 +11,9 @@
         }
     }
 
-    export const alert = async (title, description = '', children = null, manualclose = false) => {
+    export const alert = async (title: string, description: string = '', children: string = null) => {
         let state;
         const result = new Promise((resolve) => (state = resolve));
-        let close;
-        const manual = new Promise((resolve) => (close = resolve));
 
         let element = document.createElement('div');
         document.body.appendChild(element);
@@ -29,7 +27,6 @@
                     name: 'OK',
                     action: async () => {
                         await state(true);
-                        if (manualclose) await never(manual);
                     },
                     primary: true,
                 },
@@ -46,26 +43,19 @@
 
         props.open = true;
 
-        let value = [await result];
-        if (manualclose) {
-            manual.then(() => {
-                props.open = false;
-                setTimeout(async () => {
-                    await unmount(dialog);
-                    element.remove();
-                }, 400);
-            });
-        } else {
-            props.open = false;
-            setTimeout(async () => {
-                await unmount(dialog);
-                element.remove();
-            }, 400);
-        }
+        let value = await result;
+        props.open = false;
+        setTimeout(async () => {
+            await unmount(dialog);
+            element.remove();
+        }, 400);
         return value;
     };
 
-    export const confirm = async (title, description = '', children = null, isSnippet = true): Promise<boolean> => {
+    export const confirm = async (title, description = '', {children, isSnippet}: {
+        children?: string | Snippet,
+        isSnippet?: boolean
+    } = {}): Promise<boolean> => {
         let state;
         const result: Promise<boolean> = new Promise((resolve) => (state = resolve));
 
@@ -96,7 +86,7 @@
             children: isSnippet
                 ? children
                 : createRawSnippet(() => ({
-                      render: () => children ?? '<div></div>',
+                      render: () => children as string ?? '<div></div>',
                   })),
         });
 
@@ -116,7 +106,10 @@
         return value;
     };
 
-    export const wait = async (promise, title, description, children=null, showFail=false) => {
+    export const wait = async (promise, title, description, { children, showFail }: {
+        children?: string,
+        showFail?: boolean
+    } = {}) => {
         let state;
         const result = new Promise((resolve) => (state = resolve));
         let close;
@@ -167,7 +160,7 @@
                 await unmount(dialog);
                 element.remove();
             }, 400);
-            alert('Error', 'An error occured while waiting.');
+            if (showFail) alert('Error', 'An error occured while waiting.');
         });
 
         promise.finally(() => state(true));
@@ -175,7 +168,12 @@
         return [await result, close];
     };
 
-    export const prompt = async (title, description = '', children = null, isSnippet = false): Promise<string> => {
+    export const prompt = async (title, description = '', { children, isSnippet, startingValue, promptValue }: {
+        children?: string,
+        isSnippet?: boolean,
+        promptValue?: string
+        startingValue?: string
+    } = {}): Promise<string> => {
         let state;
         const result = new Promise<string>((resolve) => (state = resolve));
 
@@ -183,8 +181,8 @@
         document.body.appendChild(element);
 
         let inputProps = $state({
-            name: 'File name',
-            value: '',
+            name: promptValue || 'Input',
+            value: startingValue || '',
         });
         let props = $state({
             open: false,
@@ -252,8 +250,8 @@
 
 {#if open}
     <div class="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/50 backdrop-blur-sm" transition:fade={{ delay: 50, duration: 150, easing: quadInOut }}>
-        <div class="bg-neutral-800 shadow-xl w-full min-w-md max-w-2xl mx-4" role="dialog" aria-modal="true" transition:fade={{ duration: 150, easing: quadInOut }}>
-            <div class="px-6 pt-5">
+        <div class="bg-neutral-800 shadow-xl w-full min-w-md max-w-2xl mx-4 max-h-[85vh] flex flex-col" role="dialog" aria-modal="true" transition:fade={{ duration: 150, easing: quadInOut }}>
+            <div class="px-6 pt-5 shrink-0">
                 <h2 class="text-2xl font-bold flex flex-row items-center gap-2">
                     {#if loading}
                         <Spinner class="p-1" />
@@ -263,12 +261,12 @@
                 <h5 class="pt-0 font-semibold max-w-full text-ellipsis overflow-none">{@html description}</h5>
             </div>
 
-            <div class="px-6 py-2">
+            <div class="px-6 py-2 overflow-y-auto flex-1 min-h-0">
                 {@render children?.()}
             </div>
 
             {#if actions}
-                <div class="px-6 pb-4 pt-4 flex justify-end gap-2">
+                <div class="px-6 pb-4 pt-4 flex justify-end gap-2 shrink-0">
                     {#each actions as { name, action, primary, close }}
                         <Button
                             transparent={!primary}

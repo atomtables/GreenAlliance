@@ -1,9 +1,9 @@
-import type { Handle } from '@sveltejs/kit';
+import type {Handle} from '@sveltejs/kit';
+import {redirect} from '@sveltejs/kit';
 import * as auth from '$lib/server/auth.js';
 import "$lib/prototypes/prototypes";
-import { Role } from '$lib/types/types';
-import { canUserAccess } from './sitemap';
-import { redirect } from '@sveltejs/kit';
+import {Role} from '$lib/types/types';
+import {canUserAccess} from './sitemap';
 
 const handleAuth: Handle = async ({ event, resolve }) => {
 	const isApi = event.url.pathname.startsWith('/api');
@@ -21,18 +21,18 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 	const { session, user } = await auth.validateSessionToken(sessionToken);
 
 	if (session) {
-		auth.setSessionTokenCookie(event, sessionToken, session.expiresAt);
+		auth.setSessionTokenCookie(event as any, sessionToken, session.expiresAt);
 	} else {
-		auth.deleteSessionTokenCookie(event);
+		auth.deleteSessionTokenCookie(event as any);
 	}
 
 	event.locals.user = user;
 	// give administrator superuser permissions
 	if (user && user.role === Role.administrator) {
-		user.permissions = Array.from(Array(33).keys())
+		user.permissions = Array.from(Array(50).keys())
 	}
 	event.locals.session = session;
-
+	console.log(isApi);
 	if (!isApi && !canUserAccess(event.locals.user, event.url.pathname, event.request.method)) {
 		return redirect(302, '/home?nopermission=true');
 	}

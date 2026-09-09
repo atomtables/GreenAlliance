@@ -1,22 +1,19 @@
 import { Permission, Role, type User } from "$lib/types/types";
 import { redirect } from "@sveltejs/kit";
 import { db } from "$lib/server/db/index.js";
-import { joincodes, subteams, users } from "$lib/server/db/schema.js";
-import { isNotNull, isNull, ne } from "drizzle-orm";
+import { joincodes, subteams } from "$lib/server/db/schema.js";
+import { isNotNull, isNull } from "drizzle-orm";
 import { cleanUserFromDatabase } from "$lib/server/auth";
 
-export const load = async ({ depends, locals }: any) => {
+export const load = async ({ depends, locals, fetch }: any) => {
     depends("user:joincodes")
     console.log(await db.select().from(joincodes));
     // load all join codes
-    let userselect = db.query.users.findMany({
-        columns: {
-            passwordHash: false,
-            phone: false,
-            address: false,
-        },
-        where: locals.user.permissions.includes(Permission.users_modify) ? undefined : ne(users.role, Role.administrator)
-    }).then((v: any[]) => v.map(cleanUserFromDatabase));
+    let userselect = fetch("/api/users/list").then(async (res: Response) => {
+        if (!res.ok) throw new Error("Failed to load users");
+        const body = await res.json();
+        return body.users as User[];
+    });
     return {
         joinCodes: locals.user.permissions.includes(Permission.users_modify) && {
             active: db.select().from(joincodes).where(isNull(joincodes.usedAt)),

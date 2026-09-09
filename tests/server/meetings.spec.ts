@@ -1,9 +1,9 @@
-import { test, expect } from '@playwright/test';
-import { signin, successfulMeetingPut } from './util';
+import {expect, test} from '@playwright/test';
+import {signin, successfulMeetingPut} from './util';
 
 test.describe("Meeting endpoint tests", () => {
 
-    test("insufficient permissions (PUT)", async ({ request }) => {
+    test("insufficient permissions (no auth) (PUT)", async ({request}) => {
         
         // Make request without proper permissions
         const response = await request.put('/api/meetings', {
@@ -13,7 +13,7 @@ test.describe("Meeting endpoint tests", () => {
             }
         });
 
-        expect(response.status()).toBe(403);
+        expect(response.status()).toBe(401);
 
     });
 
@@ -35,24 +35,20 @@ test.describe("Meeting endpoint tests", () => {
     test("insufficient permissions (DELETE)", async ({ request }) => {
         
         // Make request without proper permissions
-        const response = await request.delete('/api/meetings', {
-            data: { /* meetingId not needed */  }
-        });
+        const response = await request.delete('/api/meetings/nonsense');
 
-        expect(response.status()).toBe(403);
+        expect(response.status()).toBe(401);
 
     });
 
-    test("bad request (DELETE)", async ({ request }) => {
+    test("not found (DELETE)", async ({request}) => {
         
         await signin(request);
         
         // Sign in with proper permissions
-        const response = await request.delete('/api/meetings', {
-            data: { /* missing meetingId */ }
-        });
-
-        expect(response.status()).toBe(400);
+        const response = await request.delete('/api/meetings/nonesnse');
+        console.log(await response.text());
+        expect(response.status()).toBe(404);
 
     });
 
@@ -67,9 +63,9 @@ test.describe("Meeting endpoint tests", () => {
 
         const meetingId = (await responseCreate.json()).data.id;
         expect(meetingId).toBeDefined();
-        const responseDelete = await request.delete('/api/meetings', {
-            data: { meetingId }
-        });
+        const responseDelete = await request.delete(`/api/meetings/${meetingId}`);
+
+        console.log(await responseDelete.text())
 
         expect(responseDelete.status()).toBe(200);
 

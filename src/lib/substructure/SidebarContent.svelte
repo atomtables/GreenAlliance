@@ -68,7 +68,7 @@
                 </button>
             {/each}
         </div>
-        <div class="bg-gray-600/50 flex-1 grow-1 overflow-scroll" bind:this={w} {onscroll}>
+        <div class="bg-gray-600/50 flex-1 grow-1 overflow-auto" bind:this={w} {onscroll}>
             {#each items.filter(v=>v) as {title, description, content, shelf, custom, nestedItems = null}, ind}
                 {#if ind === current}
                     {#if custom}
@@ -100,7 +100,7 @@
                                         {#if shelf && shelf.length > 0}
                                             <div class="bg-green-700 p-2 w-full shadow-xl"
                                                  style="filter: none!important">
-                                                <div class="max-w-2xl mx-auto min-w-max flex flex-row space-x-2 overflow-visible flex-nowrap -translate-x-5">
+                                                <div class="max-w-2xl mx-auto min-w-max flex flex-row space-x-2 overflow-visibleflex-nowrap -translate-x-5">
                                                     {#each shelf.filter(v => v) as {name, selections, action}}
                                                         {#if selections}
                                                             <Dropdown items={selections} onselect={action}
